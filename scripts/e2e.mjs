@@ -123,6 +123,46 @@ await page.goto('http://localhost:4182/#/focus');
 await page.clock.runFor(300);
 check('count-up starts from 00:00', (await page.locator('.big-time').innerText()) === '00:00');
 
+// ── WebView closed mid-session: recorded time up to the last snapshot is kept
+await page.getByRole('button', { name: '▶ 집중 시작' }).click();
+await page.getByRole('button', { name: '집중 시작', exact: true }).click();
+await page.clock.runFor(1000);
+for (let i = 0; i < 20; i++) await page.clock.runFor(15_500); // ~5 min, snapshots every 15 s
+await page.reload();
+await page.clock.runFor(1200);
+s = await state();
+const recovered = s.sessions.at(-1);
+check('interrupted session recovered after reload (~5 min kept)', recovered.mode === 'focus' && !recovered.completed && recovered.focusedSeconds >= 270 && recovered.focusedSeconds <= 320, recovered);
+check('settings persist across reload (count-up kept)', s.settings.focusTimer.kind === 'countup');
+
+// ── auto frequency: 8 Hz at start → base → base+2 → base
+await page.evaluate(() => {
+  const k = 'focusclay.settings.v1';
+  const st = JSON.parse(localStorage.getItem(k));
+  st.focusTimer = { ...st.focusTimer, kind: 'countdown', seconds: 1000, routineId: null };
+  st.autoFrequency = true;
+  localStorage.setItem(k, JSON.stringify(st));
+});
+await page.goto('http://localhost:4182/#/focus/ready');
+await page.reload();
+await page.clock.runFor(1200);
+await page.getByRole('button', { name: '집중 시작', exact: true }).click();
+await page.clock.runFor(1000);
+const beats = [(await state()).player.beat];
+for (const sec of [300, 400]) { await page.clock.fastForward(sec * 1000); await page.clock.runFor(600); beats.push((await state()).player.beat); }
+await page.clock.fastForward(250_000); await page.clock.runFor(600); beats.push((await state()).player.beat);
+check('auto frequency follows 8 → 10 → 12 → 10 Hz', beats.join(',') === '8,10,12,10', beats);
+await page.clock.fastForward(60_000); await page.clock.runFor(2000);
+
+// ── delete records
+await page.goto('http://localhost:4182/#/settings');
+await page.clock.runFor(300);
+await page.getByRole('button', { name: '집중 기록 삭제' }).click();
+await page.getByRole('button', { name: '삭제하기' }).click();
+await page.clock.runFor(300);
+s = await state();
+check('records deleted (state + storage)', s.sessions.length === 0 && (await page.evaluate(() => localStorage.getItem('focusclay.sessions.v1'))) === null);
+
 check('no page errors', errors.length === 0, errors);
 await browser.close();
 await server.close();

@@ -24,6 +24,7 @@ export function WeekChart({ bars }: { bars: WeekBar[] }) {
       <p className="week-chart__readout" aria-live="polite">
         <span className="strong">{s.label}요일{s.isToday ? ' (오늘)' : ''}</span> {formatDuration(s.seconds)}
       </p>
+      {bars.every((b) => b.seconds === 0) && <p className="small muted">아직 이번 주 기록이 없어요. 첫 집중을 시작해 보세요.</p>}
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="이번 주 요일별 기록된 집중시간">
         <line x1="0" x2={W} y1={BASE} y2={BASE} className="week-chart__axis" />
         {bars.map((b, i) => {

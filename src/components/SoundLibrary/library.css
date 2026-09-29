@@ -1,7 +1,7 @@
 .sound-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .sound-tile {
   appearance: none; border: 0; cursor: pointer; text-align: left;
-  display: flex; align-items: center; gap: 10px; padding: 10px; min-height: 76px;
+  display: flex; align-items: center; gap: 10px; padding: 10px 26px 10px 10px; min-height: 76px;
   background: var(--surface); border-radius: var(--radius-m); box-shadow: var(--clay-sm);
   position: relative;
 }

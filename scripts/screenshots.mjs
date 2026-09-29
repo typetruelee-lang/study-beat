@@ -20,10 +20,26 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 
+if (process.env.SEED === '1') {
+  // Sample week of records so the stats screens have something to show.
+  await page.goto(`http://localhost:${PORT}/`);
+  await page.evaluate(() => {
+    const day = 86400000, now = Date.now(), dow = (new Date().getDay() + 6) % 7;
+    const mins = [80, 130, 45, 180, 90, 120, 75];
+    const sessions = [];
+    for (let d = 0; d <= dow; d++) {
+      const start = now - (dow - d) * day - 3600000;
+      sessions.push({ id: 's' + d, mode: 'focus', startedAt: start, endedAt: start + mins[d] * 60000, plannedSeconds: 3000, activeSeconds: mins[d] * 60, focusedSeconds: mins[d] * 60, pausedSeconds: 120, interruptionCount: d % 2, resumeCount: d % 2, completed: true, beatFrequency: 10, ambientSound: 'rain_01' });
+    }
+    localStorage.setItem('focusclay.sessions.v1', JSON.stringify(sessions));
+  });
+}
+
 const routes = (process.env.ROUTES ?? '/,/focus,/focus/ready,/sleep,/relax,/library,/mixer,/binaural,/timer,/stats,/settings,/settings/licenses').split(',');
 const full = process.env.FULL === '1';
 for (const r of routes) {
   await page.goto(`http://localhost:${PORT}/#${r}`);
+  await page.reload();
   await page.waitForTimeout(900);
   const name = r === '/' ? 'home' : r.slice(1).replace(/\//g, '-');
   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: full });

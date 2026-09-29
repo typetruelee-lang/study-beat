@@ -9,8 +9,10 @@ export function GrowthTree({ stage, id = 'tree', size = 140 }: { stage: 0 | 1 | 
     <svg viewBox="0 0 140 140" width={size} height={size} role="img" aria-label={`오늘의 클레이 나무: ${LABELS[stage]}`}>
       <ClayDefs id={id} palette={P} />
       <Shadow cx={70} cy={130} rx={38} o={0.12} />
+      <path d="M44 104 h52 l-6 26 h-40z" fill={fill(id, 'pot')} />
+      <ellipse cx="70" cy="104" rx="26" ry="5" fill={fill(id, 'soil')} />
       <g className="tree-grow" key={stage}>
-        {stage === 0 && <ellipse cx="70" cy="100" rx="9" ry="6" fill={fill(id, 'seed')} />}
+        {stage === 0 && <ellipse cx="70" cy="101" rx="9" ry="6" fill={fill(id, 'seed')} />}
         {stage === 1 && (
           <>
             <path d="M70 104 V86" stroke="#6aa874" strokeWidth="4" strokeLinecap="round" />
@@ -42,8 +44,6 @@ export function GrowthTree({ stage, id = 'tree', size = 140 }: { stage: 0 | 1 | 
           </>
         )}
       </g>
-      <path d="M44 104 h52 l-6 26 h-40z" fill={fill(id, 'pot')} />
-      <ellipse cx="70" cy="104" rx="26" ry="5" fill={fill(id, 'soil')} />
     </svg>
   );
 }
