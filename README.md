@@ -35,7 +35,7 @@ src/
   audio/        AudioPort 인터페이스 · WebAudioEngine · binaural/ · noise/ · ambient/(합성 레시피, 파일 로더)
   features/     session/sessionMachine(순수 상태머신) · autoFrequency · routines
   storage/      KeyValueStore(비동기) · settings · sessions · routines · stats(순수 함수)
-  platform/     visibility(이탈 감지) · wakeLock · haptics  ← Phase 7에서 SDK 구현으로 교체
+  platform/     visibility(이탈 감지) · wakeLock · haptics · toss(SDK 지연 로드) — 토스 안에서는 SDK 사용
   sounds/       {nature,cafe,sleep,noise,meditation}/index.json + catalog
   components/   화면별 폴더 + common/ + scenes/(클레이 SVG)
 ```
