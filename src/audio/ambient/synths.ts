@@ -5,7 +5,7 @@
  */
 import type { SynthId } from '../../sounds/types';
 import {
-  addEvent, burst, chirp, eventBuffer, noiseBuffer, ping, smoothRandomBuffer, tone,
+  addEvent, burst, chirp, eventBuffer, impact, noiseBuffer, ping, smoothRandomBuffer, tone,
 } from './buffers';
 
 type Sources = AudioScheduledSourceNode[];
@@ -22,6 +22,26 @@ function loop(ctx: BaseAudioContext, buffer: AudioBuffer, dest: AudioNode | Audi
   // Random start offset so two uses of the same buffer never line up.
   src.start(ctx.currentTime, Math.random() * buffer.duration);
   sources.push(src);
+  return g;
+}
+
+/**
+ * A noise loop that never audibly repeats: two copies of the 8 s buffer at different playback
+ * rates (≈1 and ≈0.917), each rate drifting slowly by ±4%, so no stretch of texture ever replays
+ * sample-for-sample. Returns one gain that controls both.
+ */
+function noiseBed(ctx: BaseAudioContext, color: 'white' | 'pink' | 'brown', dest: AudioNode, gain: number, sources: Sources): GainNode {
+  const g = new GainNode(ctx, { gain });
+  g.connect(dest);
+  const buffer = noiseBuffer(ctx, color);
+  for (const rate of [1, 0.917]) {
+    const src = new AudioBufferSourceNode(ctx, { buffer, loop: true, playbackRate: rate });
+    const half = new GainNode(ctx, { gain: Math.SQRT1_2 });
+    src.connect(half).connect(g);
+    wander(ctx, src.playbackRate, `rate-${color}-${rate}`, 0.04, 0.15, sources);
+    src.start(ctx.currentTime, Math.random() * buffer.duration);
+    sources.push(src);
+  }
   return g;
 }
 
@@ -61,6 +81,28 @@ const drops = (ctx: BaseAudioContext, key: string, perSecond: number, fLo: numbe
       const a = amp * (0.15 + 0.85 * rnd() ** 3);
       const ev = ping(sr, rnd, fLo + rnd() * (fHi - fLo), decay * (0.6 + rnd() * 0.8), a, 0.5, 0.92);
       addEvent(L, R, Math.floor(rnd() * (L.length - ev.length)), ev, rnd() * 1.6 - 0.8);
+    }
+  });
+
+/**
+ * Rain impacts. Two layers with coprime loop lengths (7.3 s / 11.1 s) so the combined pattern
+ * never audibly repeats: fine crisp patter and fewer, darker, heavier drops.
+ */
+const rainPatter = (ctx: BaseAudioContext, key: string, perSecond: number) =>
+  eventBuffer(ctx, `patter-${key}`, 7.3, (L, R, sr, rnd) => {
+    const n = Math.floor(perSecond * 7.3);
+    for (let i = 0; i < n; i++) {
+      const ev = impact(sr, rnd, 0.0006 + rnd() * 0.0025, 0.5 * (0.1 + 0.9 * rnd() ** 3), 0.55 + rnd() * 0.4, true);
+      addEvent(L, R, Math.floor(rnd() * L.length), ev, rnd() * 1.8 - 0.9);
+    }
+  }, 44100);
+
+const rainHeavy = (ctx: BaseAudioContext, key: string, perSecond: number) =>
+  eventBuffer(ctx, `heavy-${key}`, 11.1, (L, R, sr, rnd) => {
+    const n = Math.floor(perSecond * 11.1);
+    for (let i = 0; i < n; i++) {
+      const ev = impact(sr, rnd, 0.005 + rnd() * 0.012, 0.35 * (0.2 + 0.8 * rnd() ** 2), 0.18 + rnd() * 0.3, false);
+      addEvent(L, R, Math.floor(rnd() * L.length), ev, rnd() * 1.4 - 0.7);
     }
   });
 
@@ -228,11 +270,41 @@ const plainNoise = (color: 'white' | 'pink' | 'brown'): Recipe => (ctx, out) => 
   return s;
 };
 
-function rainLayers(ctx: BaseAudioContext, out: AudioNode, s: Sources, opts: { lp: number; drops: number; body: number; key: string }) {
-  const hiss = loop(ctx, noiseBuffer(ctx, 'pink'), chain(filt(ctx, 'highpass', 450), filt(ctx, 'lowpass', opts.lp), out), 0.55, s);
-  wander(ctx, hiss.gain, `rain-${opts.key}`, 0.12, 0.3, s);
-  loop(ctx, noiseBuffer(ctx, 'brown'), chain(filt(ctx, 'lowpass', 350), out), opts.body, s);
-  loop(ctx, drops(ctx, opts.key, opts.drops, 1800, 5200, 0.006, 0.35), chain(filt(ctx, 'highpass', 1200), out), 0.8, s);
+interface RainOpts {
+  key: string;
+  /** Upper edge of the hiss / heavy drops. */
+  lp: number;
+  hiss: number;
+  body: number;
+  patter: number;
+  heavy: number;
+}
+
+/** An event loop played twice at drifting rates (≈1 and ≈0.93) so its pattern never replays. */
+function eventBed(ctx: BaseAudioContext, buffer: AudioBuffer, dest: AudioNode, gain: number, sources: Sources): GainNode {
+  const g = new GainNode(ctx, { gain });
+  g.connect(dest);
+  for (const rate of [1, 0.93]) {
+    const src = new AudioBufferSourceNode(ctx, { buffer, loop: true, playbackRate: rate });
+    src.connect(g);
+    wander(ctx, src.playbackRate, `rate-ev-${rate}`, 0.04, 0.15, sources);
+    src.start(ctx.currentTime, Math.random() * buffer.duration);
+    sources.push(src);
+  }
+  return g;
+}
+
+/** Steady hiss + light low body + two impact layers; intensity drifts slowly. */
+function rainLayers(ctx: BaseAudioContext, dest: AudioNode, s: Sources, o: RainOpts) {
+  const out = new GainNode(ctx, { gain: 1.4 }); // match the loudness of the other sounds
+  out.connect(dest);
+  const hiss = noiseBed(ctx, 'pink', chain(filt(ctx, 'highpass', 600), filt(ctx, 'lowpass', o.lp), out), o.hiss, s);
+  wander(ctx, hiss.gain, `rain-hiss-${o.key}`, o.hiss * 0.25, 0.15, s);
+  noiseBed(ctx, 'brown', chain(filt(ctx, 'lowpass', 220), out), o.body, s);
+  // Each bed plays its buffer twice, so buffers hold half the target density.
+  eventBed(ctx, rainPatter(ctx, o.key, o.patter / 2), chain(filt(ctx, 'highpass', 1400), filt(ctx, 'lowpass', Math.min(16000, o.lp * 1.6)), out), 1, s);
+  const heavy = eventBed(ctx, rainHeavy(ctx, o.key, o.heavy / 2), chain(filt(ctx, 'highpass', 250), filt(ctx, 'lowpass', o.lp), out), 0.9, s);
+  wander(ctx, heavy.gain, `rain-heavy-${o.key}`, 0.35, 0.07, s);
 }
 
 const RECIPES: Record<SynthId, Recipe> = {
@@ -242,23 +314,23 @@ const RECIPES: Record<SynthId, Recipe> = {
 
   rain: (ctx, out) => {
     const s: Sources = [];
-    rainLayers(ctx, out, s, { lp: 7500, drops: 70, body: 0.35, key: 'rain' });
+    rainLayers(ctx, out, s, { key: 'rain', lp: 9000, hiss: 0.5, body: 0.12, patter: 160, heavy: 22 });
     return s;
   },
   softRain: (ctx, out) => {
     const s: Sources = [];
-    rainLayers(ctx, out, s, { lp: 3200, drops: 28, body: 0.45, key: 'soft' });
+    rainLayers(ctx, out, s, { key: 'soft', lp: 5500, hiss: 0.45, body: 0.16, patter: 60, heavy: 8 });
     return s;
   },
   windowRain: (ctx, out) => {
     const s: Sources = [];
-    rainLayers(ctx, out, s, { lp: 4500, drops: 35, body: 0.4, key: 'window' });
-    loop(ctx, drops(ctx, 'glass', 4, 700, 1600, 0.02, 0.5), chain(filt(ctx, 'bandpass', 1100, 0.8), out), 0.7, s);
+    rainLayers(ctx, out, s, { key: 'window', lp: 6500, hiss: 0.42, body: 0.16, patter: 70, heavy: 14 });
+    eventBed(ctx, drops(ctx, 'glass', 2, 700, 1600, 0.02, 0.5), chain(filt(ctx, 'bandpass', 1100, 0.8), out), 0.35, s); // soft "tok" on the glass
     return s;
   },
   thunder: (ctx, out) => {
     const s: Sources = [];
-    rainLayers(ctx, out, s, { lp: 3000, drops: 22, body: 0.45, key: 'storm' });
+    rainLayers(ctx, out, s, { key: 'storm', lp: 5000, hiss: 0.45, body: 0.2, patter: 70, heavy: 12 });
     loop(ctx, thunder(ctx), chain(filt(ctx, 'lowpass', 160), out), 1, s);
     return s;
   },

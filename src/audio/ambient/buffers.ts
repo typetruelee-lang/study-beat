@@ -120,6 +120,29 @@ export function ping(sr: number, rnd: () => number, freq: number, decaySec: numb
   return out;
 }
 
+/**
+ * Rain-drop impact: a very short noise burst with an instant attack and exponential decay.
+ * `brightness` (0–1) is a one-pole low-pass coefficient; `crisp` differentiates the result
+ * (high-pass tilt) for the fine "tick" of small drops. No pitch — real drops are noisy.
+ */
+export function impact(sr: number, rnd: () => number, seconds: number, amp: number, brightness: number, crisp: boolean): Float32Array {
+  const len = Math.max(2, Math.floor(seconds * sr));
+  const out = new Float32Array(len);
+  const decay = Math.exp(-1 / (len / 4));
+  const attack = Math.max(1, Math.floor(sr * 0.0003));
+  let env = amp;
+  let y = 0;
+  let prev = 0;
+  for (let i = 0; i < len; i++) {
+    y += brightness * (rnd() * 2 - 1 - y);
+    const v = crisp ? y - prev : y;
+    prev = y;
+    out[i] = v * env * (i < attack ? i / attack : 1);
+    env *= decay;
+  }
+  return out;
+}
+
 /** Filtered noise burst with a smooth envelope (page flip, crackle, rumble). */
 export function burst(sr: number, rnd: () => number, seconds: number, amp: number, smoothing: number, attack = 0.1): Float32Array {
   const len = Math.floor(seconds * sr);

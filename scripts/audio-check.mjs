@@ -108,6 +108,47 @@ const results = await page.evaluate(async () => {
     }
   }
 
+  // 3b) rain character: not boomy, not muffled, noise-like (no pitched pings), no audible loop
+  {
+    const { startSynth } = await import('/src/audio/ambient/synths.ts');
+    const N = 8192;
+    const fft = (re, im) => { const n = re.length; for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } } for (let len = 2; len <= n; len <<= 1) { const a = -2 * Math.PI / len; for (let i = 0; i < n; i += len) for (let k = 0; k < len / 2; k++) { const c = Math.cos(a * k), s2 = Math.sin(a * k); const h = i + k + len / 2; const vr = re[h] * c - im[h] * s2, vi = re[h] * s2 + im[h] * c; re[h] = re[i + k] - vr; im[h] = im[i + k] - vi; re[i + k] += vr; im[i + k] += vi; } } };
+    const targets = {
+      rain: { bass: 20, hiMin: 12, hiMax: 30, flat: 0.8 },
+      softRain: { bass: 35, hiMin: 5, hiMax: 30, flat: 0.5 },
+      windowRain: { bass: 30, hiMin: 6, hiMax: 30, flat: 0.5 },
+    };
+    for (const [id, t] of Object.entries(targets)) {
+      const ctx = new OfflineAudioContext(2, SR * 26, SR);
+      startSynth(ctx, id, ctx.destination);
+      const d = (await ctx.startRendering()).getChannelData(0);
+      const spec = new Float64Array(N / 2);
+      for (let off = SR; off + N < d.length; off += N) {
+        const re = new Float64Array(N), im = new Float64Array(N);
+        for (let i = 0; i < N; i++) re[i] = d[off + i] * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / N));
+        fft(re, im);
+        for (let k = 0; k < N / 2; k++) spec[k] += re[k] ** 2 + im[k] ** 2;
+      }
+      const bin = (f) => Math.round((f / SR) * N);
+      const band = (lo, hi) => { let x = 0; for (let k = bin(lo); k < bin(hi); k++) x += spec[k]; return x; };
+      const tot = band(20, 20000);
+      const bass = (100 * band(20, 250)) / tot, hi = (100 * band(4000, 20000)) / tot;
+      let lg = 0, ar = 0, n = 0;
+      for (let k = bin(1000); k < bin(8000); k++) { lg += Math.log(spec[k] + 1e-20); ar += spec[k]; n++; }
+      const flat = Math.exp(lg / n) / (ar / n);
+      // loop repetition: 10 ms RMS envelope autocorrelation at every layer's loop length
+      const hop = SR / 100, env = [];
+      for (let i = SR; i + hop < d.length; i += hop) { let q = 0; for (let j = 0; j < hop; j++) q += d[i + j] ** 2; env.push(Math.sqrt(q / hop)); }
+      // Detrend with a 0.5 s moving average so slow, intended intensity drift is ignored and only
+      // fine-texture repetition (a loop replaying) is measured.
+      const e = env.map((x, i) => { let a = 0, c = 0; for (let j = Math.max(0, i - 25); j < Math.min(env.length, i + 25); j++) { a += env[j]; c++; } return x - a / c; });
+      const ac = (lag) => { let a = 0, q = 0; for (let i = 0; i + lag < e.length; i++) { a += e[i] * e[i + lag]; q += e[i] ** 2; } return a / q; };
+      const rep = Math.max(ac(600), ac(679), ac(730), ac(785), ac(800), ac(872), ac(1110), ac(1194));
+      const pass = bass < t.bass && hi >= t.hiMin && hi <= t.hiMax && flat >= t.flat && rep < 0.1;
+      check(`rain ${id}: bass ${bass.toFixed(1)}% · 4k+ ${hi.toFixed(1)}% · flatness ${flat.toFixed(2)} · loop repeat ${rep.toFixed(2)}`, pass, { t });
+    }
+  }
+
   // 4) noise colours: white brighter than pink brighter than brown (rendered through Web Audio)
   {
     const { noiseBuffer } = await import('/src/audio/ambient/buffers.ts');
