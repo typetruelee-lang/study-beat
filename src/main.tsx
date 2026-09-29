@@ -4,9 +4,12 @@ import { App } from './app/App';
 import { configureServices } from './app/services';
 import { createAudioEngine } from './audio';
 import { LocalStorageKV } from './storage/KeyValueStore';
+import { AitStorageKV } from './storage/AitStorageKV';
+import { isInToss } from './platform/toss';
 import './design/global.css';
 
-configureServices(new LocalStorageKV(), createAudioEngine());
+// Inside the Toss app use the SDK's native Storage; in a browser, localStorage.
+configureServices(isInToss() ? new AitStorageKV() : new LocalStorageKV(), createAudioEngine());
 
 if (import.meta.env.DEV) {
   // Read-only hook for scripts/e2e.mjs

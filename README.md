@@ -9,7 +9,9 @@ npm run dev          # 개발 서버
 npm test             # 단위 테스트 (세션 상태머신, 통계, 노이즈, 카피/라이선스 가드)
 npm run test:audio   # Chromium OfflineAudioContext로 실제 오디오 그래프 검증
 npm run test:e2e     # Playwright + 가짜 시계로 핵심 루프 E2E
-npm run build        # dist/ (상대 경로 번들, WebView용)
+npm run build        # dist/ + focus-clay.ait (앱인토스 번들)
+npm run perf         # 화면별 메인 스레드 사용량
+node scripts/build-preview.mjs  # 브라우저 미리보기용 단일 HTML
 ```
 
 ## 진행 상황
@@ -23,7 +25,7 @@ npm run build        # dist/ (상대 경로 번들, WebView용)
 | 5 | 집중시간 기록 (이탈 감지, 오늘/주/월/전체, 7일 그래프, 목표, 나무) | ✅ |
 | 5b | 자동 주파수 변화, 나의 루틴, 종료 방식 5종 | ✅ |
 | 6 | 애니메이션·렌더링 최적화 (측정 스크립트 포함) | ✅ (실기기 측정은 남음) |
-| 7 | 앱인토스 SDK 연동·검수 | 다음 |
+| 7 | 앱인토스 SDK 연동 (config, Storage·화면 켜짐·햅틱 어댑터, `.ait` 빌드) | ✅ (실기기·검수는 사용자 작업) |
 
 ## 구조
 
@@ -96,24 +98,44 @@ src/
 합성으로 어색한 소리(카페 대화, 새소리, 기차)는 라이선스가 확인된 녹음으로 교체하는 것을 권장한다.
 `src/sounds/README.md` 참고.
 
-## 앱인토스 플랫폼 확인 결과
+## 앱인토스 연동 (Phase 7)
 
-이 개발 환경에서는 개발자센터 문서 사이트 접근이 네트워크 정책으로 막혀 있어, 공식 npm 패키지
-`@apps-in-toss/web-framework@3.6.0`의 타입 정의를 직접 확인했다. **Phase 7 전에 공식 문서로 재확인이 필요하다.**
+이 환경에서는 개발자센터 문서 사이트가 네트워크 정책으로 막혀 있어, 공식 npm 패키지
+`@apps-in-toss/web-framework@3.6.0`·`@apps-in-toss/cli@3.6.0`의 타입 정의와 CLI 내장 도움말을 기준으로 구현했다.
+**아래 "문서로 재확인" 항목은 출시 전에 공식 문서로 꼭 확인해야 한다.**
 
-| 필요 기능 | SDK에 존재 | 현재 구현 (웹 표준) | Phase 7 교체 |
+```bash
+npm run build     # tsc + vite build → dist/, 이어서 ait build → focus-clay.ait (로컬 패킹)
+npm run deploy    # ait deploy — 콘솔 API 키 필요 (ait token add 로 등록)
+```
+
+- 설정: `apps-in-toss.config.ts` (v3 형식) — `appName: 'focus-clay'`, `brand.primaryColor: '#E9794F'`, `permissions: []`,
+  `webBundleDir: 'dist'`, `webView.allowsInlineMediaPlayback: true`.
+- 토스 앱 안인지 판별: 호스트가 넣어주는 `window.ReactNativeWebView` 유무 (`src/platform/toss.ts`).
+  SDK는 토스 안에서만 동적으로 불러온다(별도 청크, 브라우저에서는 다운로드하지 않음).
+
+| 기능 | 토스 앱 안 (SDK) | 브라우저 | 파일 |
 |---|---|---|---|
-| 로컬 저장 | `Storage.getItem/setItem/removeItem` | localStorage (`LocalStorageKV`) | `AitStorageKV` |
-| 화면 켜짐 유지 | `Screen.setAwakeMode({ enabled })` | Screen Wake Lock API | 그대로 교체 |
-| 햅틱 | `generateHapticFeedback({ type })` | `navigator.vibrate` | 그대로 교체 |
-| 뒤로가기/홈 | `graniteEvent.addEventListener('backEvent'/'homeEvent')` | 브라우저 history | 집중 중 뒤로가기 확인 |
-| 앱 이탈 감지 | (전용 API 없음) | `document.visibilitychange` | 실기기에서 동작 확인 |
-| **다른 앱 차단 / 기기 잠금** | **없음** | 구현하지 않음 | — (네이티브 앱에서 검토) |
-| **백그라운드 오디오 보장** | **없음** | 보장한다고 표기하지 않음 | — |
+| 기록·설정 저장 | `Storage.getItem/setItem/removeItem` | localStorage | `storage/AitStorageKV.ts` |
+| 집중 중 화면 켜짐 | `Screen.setAwakeMode({ enabled })` | Screen Wake Lock API | `platform/wakeLock.ts` |
+| 햅틱 | `generateHapticFeedback({ type: 'tickWeak' / 'success' })` | `navigator.vibrate` | `platform/haptics.ts` |
+| 앱 이탈 감지 | `visibilitychange` (전용 SDK API 없음) | 동일 | `platform/visibility.ts` |
+| 뒤로가기 | 네이티브 뒤로 → WebView 기록 → 해시 라우터 이전 화면 | 동일 | (가로채지 않음) |
+| 다른 앱 차단·기기 잠금 | **SDK에 없음 → 구현하지 않음** (집중 이탈 감지로 대체) | — | |
+| 백그라운드 재생 보장 | **SDK에 없음 → 보장한다고 표기하지 않음** | — | |
 
-- TDS(`@toss/tds-mobile`, `@toss/tds-mobile-ait` 2.5.1)는 React ≤18을 요구 → React 18로 고정했다.
-- 설정: `defineConfig`의 `webView.mediaPlaybackRequiresUserAction`, `allowsInlineMediaPlayback` 확인 필요.
-- iOS는 무음 스위치가 켜져 있으면 Web Audio가 들리지 않을 수 있다(실기기 확인 필요).
+- TDS(`@toss/tds-mobile`)는 React ≤18을 요구하므로 React 18로 고정했다. 현재 UI는 자체 클레이 디자인이며 TDS는 적용하지 않았다.
+- iOS는 무음 스위치가 켜져 있으면 Web Audio가 들리지 않을 수 있다.
+
+### 출시 전 체크리스트 (사용자 작업)
+
+1. 앱인토스 콘솔에 앱 등록 — 앱 이름이 `apps-in-toss.config.ts`의 `appName`(`focus-clay`)과 일치하는지 확인
+2. `ait token add`로 API 키 등록 → `npm run deploy` → 샌드박스 앱에서 실기기 테스트
+3. 실기기 확인 항목: 첫 탭에서 소리 시작·페이드인, 헤드폰 좌우 분리, 화면 꺼짐/앱 전환 시 재생·이탈 감지 동작,
+   화면 켜짐 유지, 네이티브 뒤로가기 흐름(집중 세션에서 뒤로 → 세션 유지), 재실행 후 기록 유지, 햅틱
+4. 문서로 재확인: 검수 가이드(TDS 사용 요구 여부, 내비게이션 바 규칙, 카피·의료 표현 규정), `backEvent` 구독 시 기본 뒤로가기 동작,
+   `webView` 옵션 의미, 오디오/백그라운드 관련 제약
+5. 녹음 음원을 쓸 경우 각 파일의 상업적 이용 가능 라이선스 확인 후 metadata 입력
 
 ## 경쟁 서비스 참고 메모
 
@@ -144,4 +166,3 @@ src/
 
 - 실기기(토스 앱) 테스트 전: 오디오 청취 품질, 화면 꺼짐 시 재생 지속, 이탈 감지 이벤트 동작.
 - 절차적 소리는 첫 사용 시 100–250ms 생성 비용이 있다(이후 캐시). 페이드인으로 가려진다.
-- Phase 7: SDK 설치, `granite.config.ts`, 어댑터 교체, 내비게이션 바 설정, 샌드박스 테스트, 검수 체크리스트.
