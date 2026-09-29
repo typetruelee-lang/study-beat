@@ -42,7 +42,7 @@ export function Shadow({ cx, cy, rx, ry = rx * 0.22, o = 0.14 }: { cx: number; c
 
 /**
  * Wrapper that pauses CSS animations when the scene is off-screen or `active` is false,
- * so idle scenes cost nothing (important in the Toss WebView).
+ * so idle scenes cost nothing. Only scenes at least 30% on screen animate (important in the Toss WebView).
  */
 export function SceneFrame({ children, label, active = true, className = '' }: { children: ReactNode; label: string; active?: boolean; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -50,7 +50,7 @@ export function SceneFrame({ children, label, active = true, className = '' }: {
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
-    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.05 });
+    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.3 });
     io.observe(el);
     return () => io.disconnect();
   }, []);

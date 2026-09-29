@@ -271,6 +271,10 @@ export function handleTick() {
   const { session, settings } = getState();
   if (!session) return;
   const { state: next, events } = tick(session, Date.now());
+  // Commit only when something visible changes (the displayed second, status or phase).
+  // Skipping is exact: the next tick measures from the last committed `lastTickAt`.
+  const sec = (s: typeof session) => Math.floor(s.phaseElapsedMs / 1000);
+  if (events.length === 0 && next.status === session.status && sec(next) === sec(session) && !settings.autoFrequency) return;
   setState({ session: next });
 
   if (settings.autoFrequency && next.mode === 'focus' && next.status === 'running' && getState().player.binauralOn) {

@@ -3,7 +3,8 @@ import { services } from '../../app/services';
 import './player.css';
 
 /**
- * Small wave under the Hz label. Uses the engine's analyser when audio runs (≈24 fps canvas),
+ * Small wave under the Hz label. Uses the engine's analyser when audio runs (≈15 fps canvas,
+ * sized once per resize — not per frame),
  * otherwise a cheap CSS-animated SVG sine.
  */
 export function Waveform({ playing }: { playing: boolean }) {
@@ -19,20 +20,27 @@ export function Waveform({ playing }: { playing: boolean }) {
     let raf = 0;
     let last = 0;
     const color = getComputedStyle(c).color;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const resize = () => {
+      c.width = c.clientWidth * dpr;
+      c.height = c.clientHeight * dpr;
+    };
+    resize();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
+    ro?.observe(c);
     const draw = (t: number) => {
       raf = requestAnimationFrame(draw);
-      if (t - last < 42 || document.hidden) return;
+      if (t - last < 66 || document.hidden) return;
       last = t;
-      const dpr = window.devicePixelRatio || 1;
-      const w = (c.width = c.clientWidth * dpr);
-      const h = (c.height = c.clientHeight * dpr);
+      const w = c.width;
+      const h = c.height;
       analyser.getByteTimeDomainData(data);
       ctx.clearRect(0, 0, w, h);
       ctx.lineWidth = 2.5 * dpr;
       ctx.lineCap = 'round';
       ctx.strokeStyle = color;
       ctx.beginPath();
-      const step = Math.max(1, Math.floor(data.length / 120));
+      const step = Math.max(1, Math.floor(data.length / 64));
       for (let i = 0, x = 0; i < data.length; i += step, x++) {
         const px = (i / data.length) * w;
         const py = h / 2 + ((data[i] - 128) / 128) * h * 1.6;
@@ -42,7 +50,10 @@ export function Waveform({ playing }: { playing: boolean }) {
       ctx.stroke();
     };
     raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+    };
   }, [analyser]);
 
   if (analyser) return <canvas ref={canvas} className="wave" aria-hidden="true" />;

@@ -35,6 +35,7 @@ function Shell() {
   const sessionMode = useAppState((s) => s.session?.mode);
   const dark = pathname.startsWith('/sleep') || (pathname === '/now' && mode === 'sleep') || (pathname === '/mixer' && sessionMode === 'sleep');
   const showTabs = TAB_ROUTES.includes(pathname);
+  const reduceMotion = useAppState((s) => s.settings.reduceMotion);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -45,7 +46,7 @@ function Shell() {
   }, [dark]);
 
   return (
-    <div className={`app-root ${dark ? 'theme-sleep' : ''}`}>
+    <div className={`app-root ${dark ? 'theme-sleep' : ''}`} data-reduce-motion={reduceMotion}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/focus" element={<FocusSetup />} />

@@ -7,8 +7,8 @@ import { Sheet } from '../common/Sheet';
 /** Shown after returning to the app while a focus session was auto-paused (집중 이탈 감지). */
 export function AwaySheet() {
   const navigate = useNavigate();
-  const session = useAppState((s) => s.session);
-  const open = !!session && session.status === 'paused' && session.pauseReason === 'away';
+  // Select only the boolean so the sheet does not re-render on every timer tick.
+  const open = useAppState((s) => s.session?.status === 'paused' && s.session.pauseReason === 'away');
   return (
     <Sheet open={open} label="집중 세션 일시정지">
       <div className="stack center">

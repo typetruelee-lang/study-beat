@@ -37,6 +37,8 @@ export interface Settings {
   endSound: EndSound;
   autoFrequency: boolean;
   headphoneTipDismissed: boolean;
+  /** Stop decorative animations (battery / motion sensitivity). */
+  reduceMotion: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -58,6 +60,7 @@ export const DEFAULT_SETTINGS: Settings = {
   endSound: 'bell',
   autoFrequency: false,
   headphoneTipDismissed: false,
+  reduceMotion: false,
 };
 
 const KEY = 'focusclay.settings.v1';

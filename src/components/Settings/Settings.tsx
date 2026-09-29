@@ -74,6 +74,12 @@ export function Settings() {
           onChange={(v) => updateSettings({ keepScreenOn: v })}
         />
         <ToggleRow
+          title="움직임 줄이기"
+          description="클레이 장면의 애니메이션을 멈춰 배터리를 아껴요."
+          checked={s.reduceMotion}
+          onChange={(v) => updateSettings({ reduceMotion: v })}
+        />
+        <ToggleRow
           title="자동 주파수 변화"
           description="집중 세션 흐름에 맞춰 알파 대역(8–12Hz) 안에서 집중 사운드가 천천히 바뀌어요."
           checked={s.autoFrequency}
