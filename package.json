@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:audio": "node scripts/audio-check.mjs",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "test:e2e": "node scripts/e2e.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -22,6 +23,7 @@
     "@eslint/js": "^9.39.5",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
+    "@types/node": "^22.20.4",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.7.0",

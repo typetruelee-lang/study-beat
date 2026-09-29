@@ -65,7 +65,7 @@ export function TimerSettings() {
 
       {timer.kind !== 'countup' && (
         <>
-          <section className="stack-s" aria-label="시간">
+          <section className="stack-s" aria-label="시간 선택">
             <div className="row-between">
               <h2 className="h2">{timer.kind === 'goal' ? '목표시간' : '집중 시간'}</h2>
               <span className="h2 tabular">{formatClock(timer.seconds)}</span>

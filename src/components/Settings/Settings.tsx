@@ -95,7 +95,7 @@ export function Settings() {
 
       <div className="notice">
         <span aria-hidden="true">ℹ️</span>
-        <span>FOCUS CLAY는 공부·휴식·수면을 위한 배경 사운드 앱이에요. 질병의 진단·치료를 위한 의료기기가 아니에요.</span>
+        <span>FOCUS CLAY는 공부·휴식·수면을 위한 배경 사운드 앱이에요. 의료기기가 아니며, 건강 상태를 진단하거나 개선하는 기능은 없어요.</span>
       </div>
 
       <Sheet open={confirm} onClose={() => setConfirm(false)} label="집중 기록 삭제 확인">

@@ -8,7 +8,7 @@ import { ClayButton } from '../common/ClayButton';
 import { GrowthTree } from '../scenes/GrowthTree';
 import './focus.css';
 
-/** Session result (spec 50). Neutral wording — no "실패", no judgement. */
+/** Session result (spec 50). Neutral wording — never framed as failure or judgement. */
 export function FocusResult() {
   const navigate = useNavigate();
   const result = useAppState((s) => s.lastResult);
