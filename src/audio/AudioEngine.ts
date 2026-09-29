@@ -1,14 +1,16 @@
 /**
  * Web Audio engine (UI-independent).
  *
- *   binaural ─┐
- *   ambient  ─┼─ bus gains → master (user volume) → fader (fade in/out)
- *   noise    ─┘      → sleepFader (scheduled timer fade) → compressor → analyser → speakers
+ *   binaural bus ───────────────────────────────┐
+ *   ambient bus ─┐                              ├→ master (user volume) → fader (fade in/out)
+ *   noise bus   ─┴→ carve (−6 dB at the carrier ┘     → sleepFader (scheduled timer fade)
+ *                   while the binaural beat is on)    → compressor → analyser → speakers
  *
  * Every gain/frequency change is ramped (see ramp.ts); sources always start from silence.
  */
 import type { SoundMeta } from '../sounds/types';
 import { BinauralBeat } from './binaural/BinauralBeat';
+import { createCarve, setCarve } from './carve';
 import { playChime } from './chime';
 import { rampTo, sliderToGain } from './ramp';
 import type { AudioPort, BinauralParams, Bus } from './types';
@@ -34,10 +36,12 @@ export class WebAudioEngine implements AudioPort {
   private fader!: GainNode;
   private sleepFader!: GainNode;
   private analyser!: AnalyserNode;
+  private carve!: BiquadFilterNode;
+  private carrier = 400;
   private binaural: BinauralBeat | null = null;
   private tracks = new Map<string, Track>();
   private busLevels: Record<Bus, number> = { binaural: 0.35, ambient: 0.8, noise: 0.6 };
-  private masterLevel = 0.8;
+  private masterLevel = 0.6;
   private suspendTimer: ReturnType<typeof setTimeout> | null = null;
   private chimeUntil = 0;
 
@@ -67,7 +71,11 @@ export class WebAudioEngine implements AudioPort {
       ambient: new GainNode(ctx, { gain: sliderToGain(this.busLevels.ambient) }),
       noise: new GainNode(ctx, { gain: sliderToGain(this.busLevels.noise) }),
     };
-    Object.values(this.buses).forEach((b) => b.connect(this.master));
+    this.carve = createCarve(ctx, this.carrier);
+    this.carve.connect(this.master);
+    this.buses.binaural.connect(this.master);
+    this.buses.ambient.connect(this.carve);
+    this.buses.noise.connect(this.carve);
     return ctx;
   }
 
@@ -91,11 +99,14 @@ export class WebAudioEngine implements AudioPort {
     const ctx = this.ensure();
     this.binaural?.stop(1);
     this.binaural = new BinauralBeat(ctx, this.buses.binaural, { beat, carrier, fadeIn: 2.5 });
+    this.carrier = carrier;
+    setCarve(this.carve, ctx, true, carrier);
   }
 
-  stopBinauralBeat() {
-    this.binaural?.stop(1.5);
+  stopBinauralBeat(fadeSeconds = 1.5) {
+    this.binaural?.stop(fadeSeconds);
     this.binaural = null;
+    if (this.ctx) setCarve(this.carve, this.ctx, false, this.carrier);
   }
 
   isBinauralOn() {
@@ -107,7 +118,9 @@ export class WebAudioEngine implements AudioPort {
   }
 
   setCarrierFrequency(hz: number) {
+    this.carrier = hz;
     this.binaural?.setCarrier(hz, 2);
+    if (this.ctx) setCarve(this.carve, this.ctx, this.binaural !== null, hz, 2);
   }
 
   setBusVolume(bus: Bus, volume: number) {
@@ -165,8 +178,7 @@ export class WebAudioEngine implements AudioPort {
     await this.fadeOut(fadeSeconds);
     // Something may have started again during the fade (e.g. a new session).
     if (this.fader.gain.value > 0.001 && this.ctx.state === 'running') return;
-    this.binaural?.stop(0.05);
-    this.binaural = null;
+    this.stopBinauralBeat(0.05);
     for (const id of [...this.tracks.keys()]) this.stopTrack(id, 0.05);
     this.suspendWhenIdle();
   }

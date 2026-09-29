@@ -42,11 +42,12 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   version: 1,
   lastMode: 'focus',
-  beatByMode: { focus: 10, sleep: 4, relax: 6 },
+  beatByMode: { focus: 10, sleep: 2, relax: 6 },
   binauralOnByMode: { focus: true, sleep: false, relax: false },
   carrierHz: 400,
   busVolumes: { binaural: 0.35, ambient: 0.8, noise: 0.6 },
-  masterVolume: 0.8,
+  // WHO safe listening: keep device output at or below ~60% of maximum.
+  masterVolume: 0.6,
   tracksByMode: DEFAULT_TRACKS,
   focusTimer: { kind: 'countdown', seconds: 25 * 60, breakSeconds: 5 * 60, routineId: null },
   sleepMinutes: 30,

@@ -37,6 +37,6 @@ export const QUICK_PICKS: Record<UseCase, string[]> = {
 /** Default mix per mode (first run). */
 export const DEFAULT_TRACKS: Record<UseCase, { id: string; volume: number }[]> = {
   focus: [{ id: 'rain_01', volume: 0.55 }],
-  sleep: [{ id: 'soft_rain_01', volume: 0.55 }, { id: 'noise_brown', volume: 0.2 }],
+  sleep: [{ id: 'soft_rain_01', volume: 0.5 }, { id: 'noise_brown', volume: 0.18 }],
   relax: [{ id: 'forest_01', volume: 0.55 }],
 };

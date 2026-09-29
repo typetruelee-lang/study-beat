@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { selectMode, updateSettings } from '../../app/actions';
-import { beatLabel } from '../../app/beats';
+import { bandLabel, beatLabel } from '../../app/beats';
 import { useMixSummary } from '../../app/hooks';
 import { useAppState } from '../../app/store';
 import { formatClock } from '../../lib/format';
@@ -40,7 +40,7 @@ export function FocusSetup() {
         <p className="big-time">{big}</p>
         <p className="sound-line">{summary}</p>
         {binauralOn && (
-          <p className="hz-line"><b>{beat} Hz</b> · Binaural Beat · {beatLabel(beat)}</p>
+          <p className="hz-line"><b>{beat} Hz</b> · {bandLabel(beat)} · {beatLabel(beat)}</p>
         )}
         <Waveform playing={playing} />
       </div>

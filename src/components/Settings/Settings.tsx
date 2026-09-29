@@ -75,7 +75,7 @@ export function Settings() {
         />
         <ToggleRow
           title="자동 주파수 변화"
-          description="집중 세션 흐름에 맞춰 집중 사운드 프리셋이 천천히 바뀌어요."
+          description="집중 세션 흐름에 맞춰 알파 대역(8–12Hz) 안에서 집중 사운드가 천천히 바뀌어요."
           checked={s.autoFrequency}
           onChange={(v) => updateSettings({ autoFrequency: v })}
         />

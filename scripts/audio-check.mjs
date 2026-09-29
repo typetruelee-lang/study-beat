@@ -57,6 +57,37 @@ const results = await page.evaluate(async () => {
     check('stop() fades to silence', rms(L, 3.2 * SR, 3.9 * SR) < 1e-4 && maxStep(L) < 0.05, { tail: rms(L, 3.2 * SR, 3.9 * SR) });
   }
 
+  // 2b) δ 2 Hz and γ 40 Hz presets: exact per-ear frequencies
+  for (const beatHz of [2, 40]) {
+    const ctx = new OfflineAudioContext(2, SR * 4, SR);
+    new BinauralBeat(ctx, ctx.destination, { carrier: 400, beat: beatHz, fadeIn: 0.5 });
+    const buf = await ctx.startRendering();
+    const L = buf.getChannelData(0), R = buf.getChannelData(1);
+    const a = 2 * SR, b = 4 * SR; // 2 s window → nulls every 0.5 Hz
+    const rHz = 400 + beatHz;
+    check(`${beatHz} Hz beat: L 400 Hz / R ${rHz} Hz`, goertzel(L, a, b, 400) > 20 * goertzel(L, a, b, rHz) && goertzel(R, a, b, rHz) > 20 * goertzel(R, a, b, 400), {});
+  }
+
+  // 2c) carve filter cuts ~6 dB at the carrier and leaves other frequencies alone
+  {
+    const { createCarve, setCarve } = await import('/src/audio/carve.ts');
+    const { noiseBuffer } = await import('/src/audio/ambient/buffers.ts');
+    const render = async (carveOn) => {
+      const ctx = new OfflineAudioContext(1, SR * 4, SR);
+      const src = new AudioBufferSourceNode(ctx, { buffer: noiseBuffer(ctx, 'pink'), loop: true });
+      const f = createCarve(ctx, 400);
+      setCarve(f, ctx, carveOn, 400, 0);
+      src.connect(f).connect(ctx.destination);
+      src.start(0, 0);
+      return (await ctx.startRendering()).getChannelData(0);
+    };
+    const on = await render(true), off = await render(false);
+    const bandPower = (d, lo, hi) => { let p = 0; for (let f = lo; f <= hi; f += 1) p += goertzel(d, SR, 4 * SR, f) ** 2; return p; };
+    const atCarrier = 10 * Math.log10(bandPower(on, 395, 405) / bandPower(off, 395, 405));
+    const far = 10 * Math.log10(bandPower(on, 1995, 2005) / bandPower(off, 1995, 2005));
+    check(`carve: ${atCarrier.toFixed(1)} dB at 400 Hz, ${far.toFixed(1)} dB at 2 kHz`, atCarrier < -4.5 && atCarrier > -7.5 && Math.abs(far) < 1, { atCarrier, far });
+  }
+
   // 3) every procedural recipe renders sane levels (no NaN, no clipping, audible)
   {
     const { startSynth, SYNTH_IDS } = await import('/src/audio/ambient/synths.ts');

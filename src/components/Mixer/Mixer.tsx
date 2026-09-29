@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { play, setBinauralOn, setBusVolume, setMasterVolume, setTrackVolume, stopPlayback, toggleTrack } from '../../app/actions';
-import { beatLabel } from '../../app/beats';
+import { bandLabel, beatLabel } from '../../app/beats';
 import { useAppState } from '../../app/store';
 import { getSound } from '../../sounds/catalog';
 import { ClayButton, IconButton } from '../common/ClayButton';
@@ -38,7 +38,7 @@ export function Mixer() {
       <section className="card stack-s" aria-label="집중 사운드">
         <ToggleRow
           title="집중 사운드 (Binaural Beat)"
-          description={`${player.beat}Hz · ${beatLabel(player.beat)}`}
+          description={`${player.beat}Hz · ${bandLabel(player.beat)} · ${beatLabel(player.beat)}`}
           checked={player.binauralOn}
           onChange={setBinauralOn}
         />
@@ -81,6 +81,10 @@ export function Mixer() {
 
       <section className="card stack-s" aria-label="전체 볼륨">
         <Slider label="전체 볼륨" value={master} onChange={setMasterVolume} />
+        <p className="small muted">
+          오래 들을 때는 기기 볼륨을 최대의 60% 이하로 권장해요(WHO 안전 청취 기준). 집중 사운드를 켜면 배경음의 같은 음 높이 부분을
+          살짝 줄여서 집중 사운드가 묻히지 않게 해요.
+        </p>
       </section>
     </div>
   );

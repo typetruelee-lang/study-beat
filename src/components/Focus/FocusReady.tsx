@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { startSession } from '../../app/actions';
-import { beatLabel } from '../../app/beats';
+import { bandLabel, beatLabel } from '../../app/beats';
 import { useMixSummary, useTodayFocus } from '../../app/hooks';
 import { useAppState } from '../../app/store';
 import { formatDuration } from '../../lib/format';
@@ -38,7 +38,7 @@ export function FocusReady() {
         <span style={{ fontSize: 48 }} aria-hidden="true">🎧</span>
         <p className="h1">{planLabel}</p>
         <p className="ready__line">{summary}</p>
-        {settings.binauralOnByMode.focus && <p className="muted">{beat}Hz · {beatLabel(beat)}</p>}
+        {settings.binauralOnByMode.focus && <p className="muted">{beat}Hz · {bandLabel(beat)} · {beatLabel(beat)}</p>}
         <div className="card card--flat" style={{ width: '100%' }}>
           <p className="small muted">오늘 목표</p>
           <p className="h2 tabular">{formatDuration(today)} / {formatDuration(goal)}</p>
@@ -53,7 +53,7 @@ export function FocusReady() {
         {settings.binauralOnByMode.focus && (
           <div className="notice" style={{ width: '100%', textAlign: 'left' }}>
             <span aria-hidden="true">🎧</span>
-            <span>집중 사운드는 이어폰이나 헤드폰으로 들을 때 가장 잘 들려요. 볼륨은 작게 시작해요.</span>
+            <span>집중 사운드는 이어폰이나 헤드폰으로 들어야 좌우 차이가 전달돼요. 기기 볼륨은 최대의 60% 이하로 맞춰 주세요.</span>
           </div>
         )}
       </div>

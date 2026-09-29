@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { endSessionEarly, pauseSession, play, resumeSession, stopPlayback } from '../../app/actions';
-import { beatLabel } from '../../app/beats';
+import { bandLabel, beatLabel } from '../../app/beats';
 import { describeSession } from '../../app/hooks';
 import { getState, useAppState } from '../../app/store';
 import { getSound } from '../../sounds/catalog';
@@ -41,7 +41,7 @@ export function NowPlaying() {
         {player.binauralOn && (
           <div className="list-item" style={{ cursor: 'default' }}>
             <span className="strong">🎧 집중 사운드</span>
-            <span className="muted">{player.beat}Hz · {beatLabel(player.beat)}</span>
+            <span className="muted">{player.beat}Hz · {bandLabel(player.beat)} · {beatLabel(player.beat)}</span>
           </div>
         )}
         {player.tracks.map((t) => {
