@@ -7,6 +7,7 @@ import type { UseCase } from '../../sounds/types';
 import { ClayButton } from '../common/ClayButton';
 import { ChipGroup } from '../common/Chip';
 import { ScreenHeader } from '../common/ScreenHeader';
+import { ScreenControlsButton } from '../Screen/ScreenControls';
 import { SoundPicks } from '../SoundLibrary/SoundPicks';
 import '../Focus/focus.css';
 
@@ -42,7 +43,7 @@ export function AmbientMode({
 
   return (
     <div className="screen stack">
-      <ScreenHeader title={title} />
+      <ScreenHeader title={title} right={<ScreenControlsButton mode={mode} />} />
       <div className="mode-hero">{scene(!mine || running)}</div>
 
       {view ? (

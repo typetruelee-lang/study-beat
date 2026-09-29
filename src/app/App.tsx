@@ -18,6 +18,8 @@ import { NowPlaying } from '../components/AudioPlayer/NowPlaying';
 import { MiniPlayer } from '../components/AudioPlayer/MiniPlayer';
 import { TabBar } from '../components/AudioPlayer/TabBar';
 import { AwaySheet } from '../components/Session/AwaySheet';
+import { DimOverlay } from '../components/Screen/DimOverlay';
+import { ScreenCurtain, useAutoCurtain } from '../components/Screen/ScreenCurtain';
 import { Splash } from './Splash';
 import { initApp } from './actions';
 import { useAppState } from './store';
@@ -36,6 +38,7 @@ function Shell() {
   const dark = pathname.startsWith('/sleep') || (pathname === '/now' && mode === 'sleep') || (pathname === '/mixer' && sessionMode === 'sleep');
   const showTabs = TAB_ROUTES.includes(pathname);
   const reduceMotion = useAppState((s) => s.settings.reduceMotion);
+  useAutoCurtain();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -68,6 +71,8 @@ function Shell() {
       {!NO_MINI.includes(pathname) && <MiniPlayer aboveTabs={showTabs} />}
       {showTabs && <TabBar />}
       <AwaySheet />
+      <DimOverlay />
+      <ScreenCurtain />
     </div>
   );
 }

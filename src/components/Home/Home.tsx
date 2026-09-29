@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { updateSettings } from '../../app/actions';
 import { useTodayFocus } from '../../app/hooks';
 import { useAppState } from '../../app/store';
 import { formatDuration } from '../../lib/format';
-import { ClayButton } from '../common/ClayButton';
+import { ClayButton, IconButton } from '../common/ClayButton';
+import { clampGoal, GOAL_STEP, GoalSheet } from '../Settings/GoalSheet';
 import { ProgressBar } from '../common/ProgressBar';
 import { RelaxScene } from '../scenes/RelaxScene';
 import { SleepScene } from '../scenes/SleepScene';
@@ -14,6 +17,9 @@ export function Home() {
   const { today, goal, remaining, progress, reached } = useTodayFocus();
   const timer = useAppState((s) => s.settings.focusTimer);
   const session = useAppState((s) => s.session);
+  const goalMinutes = useAppState((s) => s.settings.dailyGoalMinutes);
+  const [goalOpen, setGoalOpen] = useState(false);
+  const nudgeGoal = (delta: number) => updateSettings({ dailyGoalMinutes: clampGoal(goalMinutes + delta) });
   const focusMin = Math.round(timer.seconds / 60);
   const ctaLabel = timer.kind === 'countup' ? '집중 시작하기' : `${focusMin}분 집중하기`;
 
@@ -27,13 +33,19 @@ export function Home() {
       <section className="card goal-card" aria-label="오늘 목표">
         <div className="row-between">
           <span className="strong">오늘 목표</span>
-          <button type="button" className="cbtn cbtn--ghost" style={{ minHeight: 40, padding: '0 8px' }} onClick={() => navigate('/settings#goal')}>
+          <button type="button" className="cbtn cbtn--ghost" style={{ minHeight: 40, padding: '0 8px' }} onClick={() => setGoalOpen(true)}>
             목표 바꾸기
           </button>
         </div>
-        <div className="goal-card__nums">
-          <span className="goal-card__now tabular">{formatDuration(today)}</span>
-          <span className="goal-card__goal">/ {formatDuration(goal)}</span>
+        <div className="row-between">
+          <div className="goal-card__nums">
+            <span className="goal-card__now tabular">{formatDuration(today)}</span>
+            <span className="goal-card__goal">/ {formatDuration(goal)}</span>
+          </div>
+          <div className="row" style={{ gap: 6 }}>
+            <IconButton aria-label={`목표 ${GOAL_STEP}분 줄이기`} onClick={() => nudgeGoal(-GOAL_STEP)}>－</IconButton>
+            <IconButton aria-label={`목표 ${GOAL_STEP}분 늘리기`} onClick={() => nudgeGoal(GOAL_STEP)}>＋</IconButton>
+          </div>
         </div>
         <ProgressBar value={progress} label="오늘 목표 진행률" />
         <p className="small muted">{reached ? '오늘 목표를 채웠어요 🌳 더 하고 싶다면 이어서 집중해요.' : `목표까지 ${formatDuration(remaining)} 남았어요`}</p>
@@ -47,6 +59,8 @@ export function Home() {
           </ClayButton>
         )}
       </section>
+
+      <GoalSheet open={goalOpen} onClose={() => setGoalOpen(false)} />
 
       <h2 className="h2" style={{ marginTop: 8 }}>지금 무엇을 할까요?</h2>
 

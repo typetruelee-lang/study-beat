@@ -1,0 +1,19 @@
+.dim-overlay {
+  position: fixed; inset: 0; z-index: 45; pointer-events: none;
+  background: #000; transition: opacity 0.4s ease;
+}
+
+.curtain {
+  position: fixed; inset: 0; z-index: 200; background: #000; color: #5b5b66;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer;
+  animation: fade-in 0.6s ease;
+}
+.curtain__info {
+  position: absolute; left: 50%; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  transform: translateX(-50%); transition: top 2s ease; text-align: center;
+}
+.curtain__clock { font-size: 44px; font-weight: 300; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: #3f3f48; }
+.curtain__status { font-size: 15px; color: #3a3a42; }
+.curtain__hint { font-size: 14px; color: #6b6b76; transition: opacity 1s ease; }
+
+.screen-sheet__row { display: flex; flex-direction: column; gap: 6px; }

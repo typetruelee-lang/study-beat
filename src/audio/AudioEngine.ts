@@ -4,7 +4,11 @@
  *   binaural bus ───────────────────────────────┐
  *   ambient bus ─┐                              ├→ master (user volume) → fader (fade in/out)
  *   noise bus   ─┴→ carve (−6 dB at the carrier ┘     → sleepFader (scheduled timer fade)
- *                   while the binaural beat is on)    → compressor → analyser → speakers
+ *                   while the binaural beat is on)    → compressor → analyser → output
+ *
+ * Output is either a hidden <audio> element fed by a MediaStream ("background" route: mobile
+ * WebViews are more willing to keep media elements playing with the screen off) or, if that
+ * cannot start, the context's own destination. Never both.
  *
  * Every gain/frequency change is ramped (see ramp.ts); sources always start from silence.
  */
@@ -44,6 +48,10 @@ export class WebAudioEngine implements AudioPort {
   private masterLevel = 0.6;
   private suspendTimer: ReturnType<typeof setTimeout> | null = null;
   private chimeUntil = 0;
+  private backgroundOutput = true;
+  private route: 'direct' | 'stream' | null = null;
+  private streamDest: MediaStreamAudioDestinationNode | null = null;
+  private mediaEl: HTMLAudioElement | null = null;
 
   constructor(private trackFactory: TrackFactory | null = null) {}
 
@@ -65,7 +73,7 @@ export class WebAudioEngine implements AudioPort {
     this.sleepFader = new GainNode(ctx, { gain: 1 });
     this.fader = new GainNode(ctx, { gain: 0 });
     this.master = new GainNode(ctx, { gain: sliderToGain(this.masterLevel) });
-    this.master.connect(this.fader).connect(this.sleepFader).connect(comp).connect(this.analyser).connect(ctx.destination);
+    this.master.connect(this.fader).connect(this.sleepFader).connect(comp).connect(this.analyser);
     this.buses = {
       binaural: new GainNode(ctx, { gain: sliderToGain(this.busLevels.binaural) }),
       ambient: new GainNode(ctx, { gain: sliderToGain(this.busLevels.ambient) }),
@@ -82,6 +90,8 @@ export class WebAudioEngine implements AudioPort {
   async unlock() {
     const ctx = this.ensure();
     this.cancelPendingSuspend();
+    // Start the output route synchronously inside the tap (media play() needs the gesture).
+    const routed = this.applyRoute();
     if (ctx.state !== 'running') {
       try {
         await ctx.resume();
@@ -93,6 +103,72 @@ export class WebAudioEngine implements AudioPort {
     const src = new AudioBufferSourceNode(ctx, { buffer: ctx.createBuffer(1, 1, ctx.sampleRate) });
     src.connect(ctx.destination);
     src.start();
+    await routed;
+  }
+
+  setBackgroundOutput(enabled: boolean) {
+    this.backgroundOutput = enabled;
+    if (this.ctx) void this.applyRoute();
+  }
+
+  /** Pick the output route; falls back to direct output if the media element cannot play. */
+  private async applyRoute(): Promise<void> {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const canStream = typeof ctx.createMediaStreamDestination === 'function' && typeof Audio !== 'undefined';
+    const want = this.backgroundOutput && canStream ? 'stream' : 'direct';
+    if (want === 'stream') {
+      if (!this.mediaEl) {
+        this.streamDest = ctx.createMediaStreamDestination();
+        const el = new Audio();
+        el.setAttribute('playsinline', '');
+        el.srcObject = this.streamDest.stream;
+        this.mediaEl = el;
+      }
+      if (this.route !== 'stream') {
+        this.disconnectOutput();
+        this.analyser.connect(this.streamDest!);
+        this.route = 'stream';
+      }
+      try {
+        await this.mediaEl.play();
+        return;
+      } catch {
+        // Autoplay refused or unsupported: go direct below.
+      }
+    }
+    if (this.route !== 'direct') {
+      this.disconnectOutput();
+      this.analyser.connect(ctx.destination);
+      this.route = 'direct';
+    }
+    this.mediaEl?.pause();
+  }
+
+  private disconnectOutput() {
+    try {
+      this.analyser.disconnect();
+    } catch {
+      /* not connected */
+    }
+  }
+
+  /** Current output route (for diagnostics and tests). */
+  get outputRoute() {
+    return this.route;
+  }
+
+  async ensureRunning() {
+    const ctx = this.ctx;
+    if (!ctx || this.fader.gain.value < 0.001) return;
+    if (ctx.state !== 'running') {
+      try {
+        await ctx.resume();
+      } catch {
+        /* needs a tap */
+      }
+    }
+    if (this.route === 'stream') await this.mediaEl?.play().catch(() => {});
   }
 
   startBinauralBeat({ beat, carrier }: BinauralParams) {
@@ -201,7 +277,10 @@ export class WebAudioEngine implements AudioPort {
     this.cancelPendingSuspend();
     const wait = Math.max(0, this.chimeUntil - ctx.currentTime) + 0.3;
     this.suspendTimer = setTimeout(() => {
-      if (this.fader.gain.value < 0.001) void ctx.suspend();
+      if (this.fader.gain.value < 0.001) {
+        void ctx.suspend();
+        this.mediaEl?.pause();
+      }
     }, wait * 1000);
   }
 

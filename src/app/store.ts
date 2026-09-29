@@ -23,6 +23,8 @@ export interface AppState {
   session: SessionState | null;
   /** Id of the most recently saved focus session (for the result screen). */
   lastResult: StudySession | null;
+  /** Black screen (screen "off" while the app keeps playing and recording). */
+  curtain: boolean;
 }
 
 export function playerFor(settings: Settings, mode: UseCase, playing = false): PlayerState {
@@ -43,6 +45,7 @@ let state: AppState = {
   player: playerFor(DEFAULT_SETTINGS, 'focus'),
   session: null,
   lastResult: null,
+  curtain: false,
 };
 
 const listeners = new Set<() => void>();

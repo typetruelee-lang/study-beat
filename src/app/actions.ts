@@ -28,7 +28,8 @@ import type { Settings, TrackSetting } from '../storage/settings';
 import { onVisibilityChange } from '../platform/visibility';
 import { resetWakeLock, setKeepScreenOn } from '../platform/wakeLock';
 import { haptic } from '../platform/haptics';
-import { getState, playerFor, setState } from './store';
+import { updateMediaSession } from '../platform/mediaSession';
+import { getState, playerFor, setState, subscribe } from './store';
 import { services } from './services';
 
 const ACTIVE_SESSION_KEY = 'focusclay.activeSession.v1';
@@ -48,8 +49,65 @@ export async function initApp() {
   ]);
   setState({ ready: true, settings, sessions, routines, player: playerFor(settings, settings.lastMode) });
   await recoverInterruptedSession();
+  services.audio.setBackgroundOutput(settings.backgroundPlayback);
   visibilityOff?.();
   visibilityOff = onVisibilityChange(handleVisibility);
+  mediaOff?.();
+  mediaOff = subscribe(syncMediaSession);
+}
+
+// ─── lock-screen media info ──────────────────────────────────────────────────
+
+let mediaOff: (() => void) | null = null;
+let lastMediaKey = '';
+const MODE_NAME = { focus: '집중', sleep: '수면', relax: '휴식' } as const;
+
+function syncMediaSession() {
+  const { player, session } = getState();
+  const active = player.playing || !!session;
+  const main = player.tracks.map((t) => getSound(t.id)).find((m) => m?.bus === 'ambient') ?? getSound(player.tracks[0]?.id ?? '');
+  const title = main?.name ?? (player.binauralOn ? `집중 사운드 ${player.beat}Hz` : 'FOCUS CLAY');
+  const key = `${active}|${title}|${player.mode}|${player.playing}`;
+  if (key === lastMediaKey) return;
+  lastMediaKey = key;
+  updateMediaSession(active ? { title, mode: MODE_NAME[player.mode], playing: player.playing } : null, {
+    play: () => void (getState().session ? resumeSession() : play()),
+    pause: () => void (getState().session ? pauseSession('user') : stopPlayback()),
+  });
+}
+
+// ─── screen: keep awake, dim, black screen ───────────────────────────────────
+
+/** Keep the display on when the active mode wants it, or always while the black screen is up. */
+export function applyAwake() {
+  const { session, player, settings, curtain } = getState();
+  const mode = session?.mode ?? player.mode;
+  const active = session ? session.status === 'running' : player.playing;
+  void setKeepScreenOn(curtain || (active && settings.keepScreenOnByMode[mode]));
+}
+
+export function setKeepAwakeFor(mode: UseCase, on: boolean) {
+  updateSettings((s) => ({ keepScreenOnByMode: { ...s.keepScreenOnByMode, [mode]: on } }));
+  applyAwake();
+}
+
+export function setDimFor(mode: UseCase, dim: number) {
+  updateSettings((s) => ({ dimByMode: { ...s.dimByMode, [mode]: clamp(dim, 0, 0.85) } }));
+}
+
+export function openCurtain() {
+  setState({ curtain: true });
+  applyAwake();
+}
+
+export function closeCurtain() {
+  setState({ curtain: false });
+  applyAwake();
+}
+
+export function setBackgroundPlayback(on: boolean) {
+  updateSettings({ backgroundPlayback: on });
+  services.audio.setBackgroundOutput(on);
 }
 
 /** If the WebView was closed mid-session, keep what was recorded up to the last snapshot. */
@@ -128,10 +186,12 @@ export async function play() {
   setState((s) => ({ player: { ...s.player, playing: true } }));
   syncAudio();
   if (!alreadyPlaying) services.audio.fadeIn(2);
+  applyAwake();
 }
 
 export async function stopPlayback() {
   setState((s) => ({ player: { ...s.player, playing: false } }));
+  applyAwake();
   await services.audio.stopAll(1.2);
 }
 
@@ -241,10 +301,11 @@ export async function startSession(mode: UseCase, opts: { seconds?: number } = {
   const plan = buildPlan(mode, settings, routines, opts.seconds);
   const session = machineStart(createId('s'), plan, Date.now());
   setState({ session, lastResult: null });
-  await play();
-  if (mode === 'focus' && settings.keepScreenOn) void setKeepScreenOn(true);
-  scheduleSleepFade();
+  // Timer first: audio start-up (context resume, media element) must never delay recording.
   startTicker();
+  await play();
+  applyAwake();
+  scheduleSleepFade();
   haptic('tick');
 }
 
@@ -302,24 +363,36 @@ export function handleTick() {
   }
 }
 
+/**
+ * Pause the timer/recording. A pause by the user also pauses the sound; an automatic pause
+ * because the app went to the background ("away") keeps the sound playing — only the focus
+ * record stops until the user comes back and confirms.
+ */
 export async function pauseSession(reason: PauseReason = 'user') {
   const { session } = getState();
   if (!session || session.status !== 'running') return;
-  setState((s) => ({ session: pause(session, Date.now(), reason), player: { ...s.player, playing: false } }));
-  services.audio.cancelScheduledFadeOut();
+  const keepSound = reason === 'away';
+  setState((s) => ({ session: pause(session, Date.now(), reason), player: { ...s.player, playing: keepSound } }));
   void services.kv.set(ACTIVE_SESSION_KEY, JSON.stringify(getState().session));
-  void setKeepScreenOn(false);
+  applyAwake();
+  if (keepSound) return;
+  services.audio.cancelScheduledFadeOut();
   await services.audio.suspend(0.8);
 }
 
 export async function resumeSession() {
-  const { session, settings } = getState();
+  const { session } = getState();
   if (!session || session.status !== 'paused') return;
   setState((s) => ({ session: resume(session, Date.now()), player: { ...s.player, playing: true } }));
-  await services.audio.unlock();
-  syncAudio();
-  await services.audio.resume(1.5);
-  if (session.mode === 'focus' && settings.keepScreenOn) void setKeepScreenOn(true);
+  if (session.pauseReason === 'away') {
+    // Sound never stopped; just make sure the OS did not suspend it meanwhile.
+    await services.audio.ensureRunning();
+  } else {
+    await services.audio.unlock();
+    syncAudio();
+    await services.audio.resume(1.5);
+  }
+  applyAwake();
   scheduleSleepFade();
 }
 
@@ -350,9 +423,9 @@ async function finishSession() {
     const record = toRecord(session);
     await services.kv.remove(ACTIVE_SESSION_KEY);
     const saved = await saveRecord(record);
-    void setKeepScreenOn(false);
     services.audio.cancelScheduledFadeOut();
-    setState({ session: null, lastResult: session.mode === 'focus' && saved ? record : null });
+    setState({ session: null, curtain: false, lastResult: session.mode === 'focus' && saved ? record : null });
+    applyAwake();
 
     if (session.mode === 'sleep') {
       // Natural end already faded out on the audio clock; an early stop fades now.
@@ -391,10 +464,9 @@ function handleVisibility(visible: boolean) {
     return;
   }
   resetWakeLock();
-  if (session) {
-    handleTick();
-    if (session.mode === 'focus' && session.status === 'running' && settings.keepScreenOn) void setKeepScreenOn(true);
-  }
+  if (getState().player.playing) void services.audio.ensureRunning();
+  if (session) handleTick();
+  applyAwake();
 }
 
 export function dismissResult() {

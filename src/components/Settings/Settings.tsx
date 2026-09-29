@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clearFocusRecords, updateSettings } from '../../app/actions';
+import { clearFocusRecords, setBackgroundPlayback, setKeepAwakeFor, updateSettings } from '../../app/actions';
 import { useAppState } from '../../app/store';
 import type { EndSound } from '../../storage/settings';
 import { formatDuration } from '../../lib/format';
 import { ClayButton } from '../common/ClayButton';
+import { GOAL_PRESETS, GoalSheet } from './GoalSheet';
 import { ChipGroup } from '../common/Chip';
 import { Sheet } from '../common/Sheet';
 import { ToggleRow } from '../common/Toggle';
 
-const GOALS = [30, 60, 120, 180, 300];
 const END_SOUNDS: { value: EndSound; label: string }[] = [
   { value: 'bell', label: '부드러운 종소리' },
   { value: 'beep', label: '짧은 알림음' },
@@ -23,7 +23,7 @@ export function Settings() {
   const s = useAppState((st) => st.settings);
   const count = useAppState((st) => st.sessions.length);
   const [confirm, setConfirm] = useState(false);
-  const [customGoal, setCustomGoal] = useState('');
+  const [goalOpen, setGoalOpen] = useState(false);
 
   return (
     <div className="screen stack">
@@ -36,22 +36,12 @@ export function Settings() {
         </div>
         <ChipGroup
           label="하루 목표"
-          value={GOALS.includes(s.dailyGoalMinutes) ? s.dailyGoalMinutes : -1}
+          value={(GOAL_PRESETS as readonly number[]).includes(s.dailyGoalMinutes) ? s.dailyGoalMinutes : -1}
           onChange={(v) => updateSettings({ dailyGoalMinutes: v })}
-          options={GOALS.map((m) => ({ value: m, label: formatDuration(m * 60) }))}
+          options={GOAL_PRESETS.map((m) => ({ value: m, label: formatDuration(m * 60) }))}
         />
-        <div className="row">
-          <input className="text-input" inputMode="numeric" placeholder="직접 입력 (분)" aria-label="하루 목표 직접 입력(분)" value={customGoal} onChange={(e) => setCustomGoal(e.target.value.replace(/\D/g, '').slice(0, 4))} />
-          <ClayButton
-            disabled={!customGoal || Number(customGoal) < 1}
-            onClick={() => {
-              updateSettings({ dailyGoalMinutes: Math.min(1440, Number(customGoal)) });
-              setCustomGoal('');
-            }}
-          >
-            적용
-          </ClayButton>
-        </div>
+        <ClayButton block onClick={() => setGoalOpen(true)}>직접 설정</ClayButton>
+        <GoalSheet open={goalOpen} onClose={() => setGoalOpen(false)} />
       </section>
 
       <section className="card stack-s" aria-label="타이머 종료">
@@ -69,9 +59,15 @@ export function Settings() {
         />
         <ToggleRow
           title="집중 중 화면 켜짐 유지"
-          description="지원하는 기기에서 집중하는 동안 화면이 꺼지지 않게 해요."
-          checked={s.keepScreenOn}
-          onChange={(v) => updateSettings({ keepScreenOn: v })}
+          description="끄면 기기의 화면 자동 꺼짐 시간에 맞춰 화면이 꺼져요. 화면이 꺼지면 집중 기록은 잠시 멈추고 소리는 계속돼요."
+          checked={s.keepScreenOnByMode.focus}
+          onChange={(v) => setKeepAwakeFor('focus', v)}
+        />
+        <ToggleRow
+          title="화면 꺼져도 재생 (실험적)"
+          description="화면이 꺼지거나 다른 앱으로 가도 소리가 이어지도록 재생해요. 토스 앱·기기 정책에 따라 멈출 수 있어요. 확실하게 들으려면 검은 화면을 쓰세요."
+          checked={s.backgroundPlayback}
+          onChange={setBackgroundPlayback}
         />
         <ToggleRow
           title="움직임 줄이기"

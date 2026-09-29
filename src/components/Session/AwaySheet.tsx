@@ -13,11 +13,11 @@ export function AwaySheet() {
     <Sheet open={open} label="집중 세션 일시정지">
       <div className="stack center">
         <span style={{ fontSize: 40 }} aria-hidden="true">⏸</span>
-        <p className="h2">집중 세션이 잠시 멈췄어요</p>
+        <p className="h2">집중 기록이 잠시 멈췄어요</p>
         <p className="muted">
-          FOCUS CLAY 화면을 벗어난 동안의 시간은 집중시간에 기록하지 않았어요.
+          화면이 꺼지거나 FOCUS CLAY를 벗어난 동안은 집중시간에 기록하지 않았어요. 소리는 계속 나오고 있어요.
           <br />
-          이어서 집중할까요?
+          화면을 끄고 공부하려면 ☀ 화면 설정의 검은 화면을 써 보세요.
         </p>
         <ClayButton variant="primary" size="lg" block onClick={() => void resumeSession()}>
           집중 계속하기

@@ -6,6 +6,7 @@ import { getState, useAppState } from '../../app/store';
 import { getSound } from '../../sounds/catalog';
 import { ClayButton } from '../common/ClayButton';
 import { ScreenHeader } from '../common/ScreenHeader';
+import { ScreenControlsButton } from '../Screen/ScreenControls';
 import { RelaxScene } from '../scenes/RelaxScene';
 import { SleepScene } from '../scenes/SleepScene';
 import { StudyScene } from '../scenes/StudyScene';
@@ -26,7 +27,7 @@ export function NowPlaying() {
 
   return (
     <div className="screen screen--bare stack">
-      <ScreenHeader title="현재 재생" />
+      <ScreenHeader title="현재 재생" right={<ScreenControlsButton mode={player.mode} />} />
       <div className="mode-hero mode-hero--small"><Scene id="now-scene" active={running} /></div>
       <p className="center strong muted">{MODE_LABEL[player.mode]}</p>
       {view && (

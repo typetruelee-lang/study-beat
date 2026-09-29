@@ -43,6 +43,13 @@ export interface AudioPort {
   scheduleFadeOut(startInSeconds: number, fadeSeconds: number): void;
   cancelScheduledFadeOut(): void;
   playChime(kind: 'bell' | 'beep'): void;
+  /**
+   * Play through a media element (MediaStream) instead of straight to the speakers, so mobile
+   * WebViews may keep playing with the screen off. Falls back to direct output if it cannot start.
+   */
+  setBackgroundOutput(enabled: boolean): void;
+  /** Resume output if the OS suspended it while the app was hidden. */
+  ensureRunning(): Promise<void>;
   /** For the small waveform visual; null when audio is not running. */
   getAnalyser(): AnalyserNode | null;
 }
@@ -71,5 +78,7 @@ export class SilentAudioPort implements AudioPort {
   scheduleFadeOut() {}
   cancelScheduledFadeOut() {}
   playChime() {}
+  setBackgroundOutput() {}
+  async ensureRunning() {}
   getAnalyser() { return null; }
 }

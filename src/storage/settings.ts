@@ -33,7 +33,14 @@ export interface Settings {
   relaxMinutes: number;
   dailyGoalMinutes: number;
   awayDetection: boolean;
-  keepScreenOn: boolean;
+  /** Keep the display awake while this mode plays (off = device auto-lock turns it off). */
+  keepScreenOnByMode: Record<UseCase, boolean>;
+  /** In-app dimming 0 (none) … 0.85, per mode. The system brightness cannot be changed. */
+  dimByMode: Record<UseCase, number>;
+  /** Enter the black screen after this many idle minutes while playing; null = off. */
+  autoCurtainMinutes: number | null;
+  /** Route output through a media element so playback can continue with the screen off. */
+  backgroundPlayback: boolean;
   endSound: EndSound;
   autoFrequency: boolean;
   headphoneTipDismissed: boolean;
@@ -56,7 +63,10 @@ export const DEFAULT_SETTINGS: Settings = {
   relaxMinutes: 10,
   dailyGoalMinutes: 120,
   awayDetection: true,
-  keepScreenOn: true,
+  keepScreenOnByMode: { focus: true, sleep: false, relax: false },
+  dimByMode: { focus: 0, sleep: 0.4, relax: 0 },
+  autoCurtainMinutes: null,
+  backgroundPlayback: true,
   endSound: 'bell',
   autoFrequency: false,
   headphoneTipDismissed: false,
@@ -79,9 +89,14 @@ export class SettingsRepository {
 }
 
 /** Shallow-merge nested groups so new fields get defaults after an app update. */
-export function mergeSettings(saved: Partial<Settings> | null): Settings {
+export function mergeSettings(saved: (Partial<Settings> & { keepScreenOn?: boolean }) | null): Settings {
   if (!saved) return structuredClone(DEFAULT_SETTINGS);
   const d = DEFAULT_SETTINGS;
+  // v0.1 stored a single focus-only keepScreenOn flag.
+  const legacyAwake = typeof saved.keepScreenOn === 'boolean' ? { focus: saved.keepScreenOn } : {};
+  const { keepScreenOn: _legacy, ...rest } = saved;
+  void _legacy;
+  saved = rest;
   return {
     ...d,
     ...saved,
@@ -91,5 +106,7 @@ export function mergeSettings(saved: Partial<Settings> | null): Settings {
     busVolumes: { ...d.busVolumes, ...saved.busVolumes },
     tracksByMode: { ...d.tracksByMode, ...saved.tracksByMode },
     focusTimer: { ...d.focusTimer, ...saved.focusTimer },
+    keepScreenOnByMode: { ...d.keepScreenOnByMode, ...legacyAwake, ...saved.keepScreenOnByMode },
+    dimByMode: { ...d.dimByMode, ...saved.dimByMode },
   };
 }

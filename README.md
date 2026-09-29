@@ -117,13 +117,18 @@ npm run deploy    # ait deploy — 콘솔 API 키 필요 (ait token add 로 등�
 | 기능 | 토스 앱 안 (SDK) | 브라우저 | 파일 |
 |---|---|---|---|
 | 기록·설정 저장 | `Storage.getItem/setItem/removeItem` | localStorage | `storage/AitStorageKV.ts` |
-| 집중 중 화면 켜짐 | `Screen.setAwakeMode({ enabled })` | Screen Wake Lock API | `platform/wakeLock.ts` |
+| 화면 켜짐 유지 (모드별) | `Screen.setAwakeMode({ enabled })` | Screen Wake Lock API | `platform/wakeLock.ts`, `actions.applyAwake` |
 | 햅틱 | `generateHapticFeedback({ type: 'tickWeak' / 'success' })` | `navigator.vibrate` | `platform/haptics.ts` |
 | 앱 이탈 감지 | `visibilitychange` (전용 SDK API 없음) | 동일 | `platform/visibility.ts` |
 | 뒤로가기 | 네이티브 뒤로 → WebView 기록 → 해시 라우터 이전 화면 | 동일 | (가로채지 않음) |
 | 다른 앱 차단·기기 잠금 | **SDK에 없음 → 구현하지 않음** (집중 이탈 감지로 대체) | — | |
-| 백그라운드 재생 보장 | **SDK에 없음 → 보장한다고 표기하지 않음** | — | |
+| 백그라운드 재생 보장 | **SDK에 없음** → 출력을 `MediaStream` → 숨은 `<audio>` 요소로 보내 화면이 꺼져도 이어지도록 *시도*(실패 시 직접 출력으로 폴백), Media Session으로 잠금화면 정보·재생/일시정지 | 동일 | `AudioEngine.applyRoute`, `platform/mediaSession.ts` |
+| 기기 밝기 조절 · 화면 끄기 | **SDK·웹 모두 API 없음** → 앱 화면 밝기(검은 레이어 15–100%), 화면 켜짐 유지 끄기(기기 자동 꺼짐 허용), **검은 화면 모드**(앱은 켜진 채 화면만 까맣게, 두 번 탭/길게 눌러 해제, 자동 진입 1/5/10분) | 동일 | `components/Screen/*` |
 
+- 화면이 꺼지거나 다른 앱으로 가면(웹에서는 둘을 구분할 수 없음) **집중 기록은 멈추고 소리는 계속**된다. 화면을 끈 채 기록까지
+  이어가려면 검은 화면 모드를 쓴다(앱이 앞에 있어 재생·기록 모두 유지, OLED는 검은 화소 전력이 거의 0).
+- 화면이 실제로 꺼진 뒤에도 소리가 계속 나는지는 토스 앱(WebView)의 백그라운드 정책에 달려 있어 **실기기 확인이 필요**하다.
+  설정의 "화면 꺼져도 재생(실험적)"을 끄면 기존처럼 Web Audio 직접 출력으로 돌아간다.
 - TDS(`@toss/tds-mobile`)는 React ≤18을 요구하므로 React 18로 고정했다. 현재 UI는 자체 클레이 디자인이며 TDS는 적용하지 않았다.
 - iOS는 무음 스위치가 켜져 있으면 Web Audio가 들리지 않을 수 있다.
 
@@ -131,7 +136,7 @@ npm run deploy    # ait deploy — 콘솔 API 키 필요 (ait token add 로 등�
 
 1. 앱인토스 콘솔에 앱 등록 — 앱 이름이 `apps-in-toss.config.ts`의 `appName`(`focus-clay`)과 일치하는지 확인
 2. `ait token add`로 API 키 등록 → `npm run deploy` → 샌드박스 앱에서 실기기 테스트
-3. 실기기 확인 항목: 첫 탭에서 소리 시작·페이드인, 헤드폰 좌우 분리, 화면 꺼짐/앱 전환 시 재생·이탈 감지 동작,
+3. 실기기 확인 항목: 첫 탭에서 소리 시작·페이드인, **화면 잠금 후 재생 지속(iOS·Android 각각)**, 잠금화면 재생 컨트롤, 검은 화면 모드, 헤드폰 좌우 분리, 화면 꺼짐/앱 전환 시 재생·이탈 감지 동작,
    화면 켜짐 유지, 네이티브 뒤로가기 흐름(집중 세션에서 뒤로 → 세션 유지), 재실행 후 기록 유지, 햅틱
 4. 문서로 재확인: 검수 가이드(TDS 사용 요구 여부, 내비게이션 바 규칙, 카피·의료 표현 규정), `backEvent` 구독 시 기본 뒤로가기 동작,
    `webView` 옵션 의미, 오디오/백그라운드 관련 제약
