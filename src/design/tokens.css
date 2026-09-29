@@ -1,0 +1,71 @@
+/* FOCUS CLAY design tokens — warm clay palette, soft 3D shadows, large type. */
+:root {
+  --font: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Noto Sans KR', 'Segoe UI', sans-serif;
+
+  --bg: #f6efe6;
+  --surface: #fffaf4;
+  --surface-2: #f1e6d8;
+  --ink: #3b2f29;
+  --ink-soft: #6f6058;
+  --ink-faint: #8f8078;
+  --line: rgba(92, 64, 45, 0.12);
+
+  --primary: #e9794f;        /* clay apricot */
+  --primary-press: #d86a41;
+  --primary-ink: #ffffff;
+  --primary-soft: #fde2d3;
+  --sage: #8fbf98;
+  --sage-soft: #dcecd9;
+  --sky: #9cc7e4;
+  --lavender: #b3a5de;
+  --butter: #f6d27a;
+  --danger-soft: #f7ddd6;
+
+  --focus-tint: #fbe4cb;
+  --sleep-tint: #25325a;
+  --relax-tint: #fcd9bd;
+
+  --radius-s: 14px;
+  --radius-m: 22px;
+  --radius-l: 30px;
+  --radius-pill: 999px;
+
+  /* Clay = outer soft drop + inner top highlight + inner bottom shade */
+  --clay: 0 10px 24px rgba(116, 76, 48, 0.16), 0 2px 4px rgba(116, 76, 48, 0.08),
+    inset 0 5px 10px rgba(255, 255, 255, 0.75), inset 0 -6px 12px rgba(116, 76, 48, 0.1);
+  --clay-sm: 0 5px 12px rgba(116, 76, 48, 0.14), inset 0 3px 6px rgba(255, 255, 255, 0.7),
+    inset 0 -4px 8px rgba(116, 76, 48, 0.08);
+  --clay-pressed: inset 0 4px 10px rgba(116, 76, 48, 0.18), inset 0 -2px 4px rgba(255, 255, 255, 0.6);
+
+  --touch: 48px;
+  --gutter: 20px;
+  --tabbar-h: 64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+
+  --t-display: 64px;
+  --t-h1: 26px;
+  --t-h2: 20px;
+  --t-body: 17px;
+  --t-small: 15px;
+  --t-tiny: 13px;
+}
+
+.theme-sleep {
+  --bg: #19223f;
+  --surface: #25305a;
+  --surface-2: #2e3a68;
+  --ink: #eef0fb;
+  --ink-soft: #b9bfdc;
+  --ink-faint: #9aa1c4;
+  --line: rgba(220, 225, 255, 0.12);
+  --primary: #9ea8f0;
+  --primary-press: #8c96e6;
+  --primary-ink: #1c2344;
+  --primary-soft: #36427a;
+  --clay: 0 10px 24px rgba(0, 0, 0, 0.35), inset 0 4px 10px rgba(255, 255, 255, 0.12),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.25);
+  --clay-sm: 0 5px 12px rgba(0, 0, 0, 0.3), inset 0 3px 6px rgba(255, 255, 255, 0.1),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.2);
+  --clay-pressed: inset 0 4px 10px rgba(0, 0, 0, 0.35);
+}

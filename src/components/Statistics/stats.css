@@ -1,0 +1,15 @@
+.week-chart { margin: 0; }
+.week-chart svg { width: 100%; height: auto; display: block; }
+.week-chart__readout { min-height: 26px; margin-bottom: 4px; }
+.week-chart__axis { stroke: var(--line); stroke-width: 1; }
+.week-chart__bar { fill: #d0613a; opacity: 0.55; transition: opacity 0.2s; }
+.week-chart__bar.is-sel { opacity: 1; }
+.week-chart__value { font-size: 12px; font-weight: 750; fill: var(--ink); }
+.week-chart__label { font-size: 13px; fill: var(--ink-soft); font-weight: 650; }
+.week-chart__label.is-today { fill: var(--ink); font-weight: 850; }
+
+.totals { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.total-tile { background: var(--surface); border-radius: var(--radius-m); box-shadow: var(--clay-sm); padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.total-tile__value { font-size: 22px; font-weight: 850; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.today-row { display: flex; align-items: center; gap: 12px; }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }

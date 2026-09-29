@@ -1,0 +1,144 @@
+[
+  {
+    "id": "soft_rain_01",
+    "name": "잔잔한 비",
+    "emoji": "🌦",
+    "category": "sleep",
+    "bus": "ambient",
+    "useCases": [
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.55,
+    "source": "synth",
+    "synth": "softRain",
+    "thumb": "rain",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "thunder_01",
+    "name": "먼 천둥",
+    "emoji": "⛈",
+    "category": "sleep",
+    "bus": "ambient",
+    "useCases": [
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.55,
+    "source": "synth",
+    "synth": "thunder",
+    "thumb": "rain",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "night_forest_01",
+    "name": "밤의 숲",
+    "emoji": "🦗",
+    "category": "sleep",
+    "bus": "ambient",
+    "useCases": [
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.5,
+    "source": "synth",
+    "synth": "nightForest",
+    "thumb": "moon",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "sleep_waves_01",
+    "name": "밤바다 파도",
+    "emoji": "🌙",
+    "category": "sleep",
+    "bus": "ambient",
+    "useCases": [
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.55,
+    "source": "synth",
+    "synth": "slowWaves",
+    "thumb": "waves",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "fan_01",
+    "name": "선풍기",
+    "emoji": "🌀",
+    "category": "sleep",
+    "bus": "ambient",
+    "useCases": [
+      "sleep",
+      "focus"
+    ],
+    "loop": true,
+    "volume": 0.45,
+    "source": "synth",
+    "synth": "fan",
+    "thumb": "fan",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "deep_rumble_01",
+    "name": "깊은 저주파 노이즈",
+    "emoji": "🌑",
+    "category": "sleep",
+    "bus": "ambient",
+    "useCases": [
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.5,
+    "source": "synth",
+    "synth": "deepRumble",
+    "thumb": "noise",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "lullaby_01",
+    "name": "잔잔한 음악",
+    "emoji": "🎵",
+    "category": "sleep",
+    "bus": "ambient",
+    "useCases": [
+      "sleep",
+      "relax"
+    ],
+    "loop": true,
+    "volume": 0.4,
+    "source": "synth",
+    "synth": "lullaby",
+    "thumb": "pad",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "calm_pad_01",
+    "name": "잔잔한 앰비언트",
+    "emoji": "✨",
+    "category": "meditation",
+    "bus": "ambient",
+    "useCases": [
+      "relax"
+    ],
+    "loop": true,
+    "volume": 0.4,
+    "source": "synth",
+    "synth": "calmPad",
+    "thumb": "pad",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "lake_01",
+    "name": "호숫가 물결",
+    "emoji": "🏞",
+    "category": "meditation",
+    "bus": "ambient",
+    "useCases": [
+      "relax"
+    ],
+    "loop": true,
+    "volume": 0.55,
+    "source": "synth",
+    "synth": "lake",
+    "thumb": "lake",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "mountain_wind_01",
+    "name": "산바람",
+    "emoji": "⛰",
+    "category": "meditation",
+    "bus": "ambient",
+    "useCases": [
+      "relax"
+    ],
+    "loop": true,
+    "volume": 0.45,
+    "source": "synth",
+    "synth": "mountainWind",
+    "thumb": "wind",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  }
+]

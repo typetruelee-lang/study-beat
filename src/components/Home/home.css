@@ -1,0 +1,24 @@
+.home-header { padding: 8px 4px 4px; }
+.home-title { font-size: 28px; font-weight: 900; letter-spacing: 0.03em; }
+.home-sub { color: var(--ink-soft); margin-top: 2px; }
+
+.goal-card { display: flex; flex-direction: column; gap: 12px; }
+.goal-card__nums { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.goal-card__now { font-size: 30px; font-weight: 850; letter-spacing: -0.02em; }
+.goal-card__goal { color: var(--ink-soft); font-weight: 650; }
+
+.mode-card {
+  appearance: none; border: 0; padding: 0; width: 100%; text-align: left; cursor: pointer;
+  border-radius: var(--radius-l); overflow: hidden; background: var(--surface); box-shadow: var(--clay);
+  display: flex; flex-direction: column; transition: transform 0.15s ease;
+}
+.mode-card:active { transform: scale(0.985); }
+.mode-card__art { height: 176px; }
+.mode-card__body { padding: 14px 20px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mode-card__kicker { font-size: var(--t-small); color: var(--ink-soft); font-weight: 650; }
+.mode-card__title { font-size: 23px; font-weight: 850; letter-spacing: -0.02em; margin: 2px 0; }
+.mode-card__desc { color: var(--ink-soft); font-size: var(--t-small); }
+.mode-card__go { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--primary-soft); font-size: 20px; flex: none; }
+.mode-card--sleep { background: #25305a; color: #eef0fb; }
+.mode-card--sleep .mode-card__kicker, .mode-card--sleep .mode-card__desc { color: #b9bfdc; }
+.mode-card--sleep .mode-card__go { background: #36427a; }

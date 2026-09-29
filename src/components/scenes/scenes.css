@@ -1,0 +1,34 @@
+.scene { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: inherit; line-height: 0; }
+.scene svg { width: 100%; height: 100%; display: block; }
+.scene[data-paused='true'] * { animation-play-state: paused !important; }
+/* Only animated elements use fill-box, so static rotate() attributes keep their SVG meaning. */
+.anim-breathe, .anim-twinkle, .anim-ripple, .anim-page, .anim-zzz, .anim-write, .tree-grow { transform-box: fill-box; }
+.anim-breathe-slow { transform-box: view-box; }
+
+.anim-breathe { animation: clay-breathe 5s ease-in-out infinite; transform-origin: 50% 100%; }
+.anim-breathe-slow { animation: clay-breathe-slow 6.5s ease-in-out infinite; }
+.anim-sway { animation: clay-sway 6s ease-in-out infinite; transform-box: view-box; }
+.anim-flicker { animation: clay-flicker 4s ease-in-out infinite; }
+.anim-write { animation: clay-write 1.6s ease-in-out infinite; }
+.anim-page { animation: clay-page 9s ease-in-out infinite; transform-origin: 0% 100%; }
+.anim-twinkle { animation: clay-twinkle 3.2s ease-in-out infinite; transform-origin: 50% 50%; }
+.anim-drift { animation: clay-drift 26s ease-in-out infinite alternate; }
+.anim-drift-slow { animation: clay-drift 40s ease-in-out infinite alternate-reverse; }
+.anim-tail { animation: clay-tail 3s ease-in-out infinite; transform-box: view-box; }
+.anim-zzz { animation: clay-zzz 4s ease-in-out infinite; opacity: 0; }
+.anim-ripple { animation: clay-ripple 5s ease-out infinite; transform-origin: 50% 50%; }
+
+@keyframes clay-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.02, 1.035); } }
+@keyframes clay-breathe-slow { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.05); } }
+@keyframes clay-sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+@keyframes clay-flicker { 0%, 100% { opacity: 0.85; } 45% { opacity: 1; } 60% { opacity: 0.78; } }
+@keyframes clay-write { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(4px, -1px); } 50% { transform: translate(8px, 0); } 75% { transform: translate(4px, 1px); } }
+@keyframes clay-page { 0%, 70%, 100% { transform: scaleX(1); } 80% { transform: scaleX(-1); } 90% { transform: scaleX(-1); opacity: 0; } }
+@keyframes clay-twinkle { 0%, 100% { opacity: 0.35; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.1); } }
+@keyframes clay-drift { from { transform: translateX(-14px); } to { transform: translateX(22px); } }
+@keyframes clay-tail { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(14deg); } }
+@keyframes clay-zzz { 0% { opacity: 0; transform: translate(0, 6px); } 30% { opacity: 0.9; } 100% { opacity: 0; transform: translate(10px, -14px); } }
+@keyframes clay-ripple { 0% { opacity: 0.8; transform: scale(0.5); } 100% { opacity: 0; transform: scale(1.4); } }
+
+.tree-grow { animation: tree-pop 0.9s cubic-bezier(0.3, 1.5, 0.5, 1); transform-origin: 50% 100%; }
+@keyframes tree-pop { from { transform: scale(0.6); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }

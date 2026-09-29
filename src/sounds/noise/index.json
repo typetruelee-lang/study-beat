@@ -1,0 +1,64 @@
+[
+  {
+    "id": "noise_white",
+    "name": "White Noise",
+    "emoji": "⬜",
+    "category": "noise",
+    "bus": "noise",
+    "useCases": [
+      "focus"
+    ],
+    "loop": true,
+    "volume": 0.25,
+    "source": "synth",
+    "synth": "white",
+    "thumb": "noise",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "noise_pink",
+    "name": "Pink Noise",
+    "emoji": "🩷",
+    "category": "noise",
+    "bus": "noise",
+    "useCases": [
+      "focus",
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.3,
+    "source": "synth",
+    "synth": "pink",
+    "thumb": "noise",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "noise_brown",
+    "name": "Brown Noise",
+    "emoji": "🟤",
+    "category": "noise",
+    "bus": "noise",
+    "useCases": [
+      "focus",
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.35,
+    "source": "synth",
+    "synth": "brown",
+    "thumb": "noise",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  }
+]

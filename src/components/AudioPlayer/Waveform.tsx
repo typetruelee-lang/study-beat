@@ -1,0 +1,56 @@
+import { useEffect, useRef } from 'react';
+import { services } from '../../app/services';
+import './player.css';
+
+/**
+ * Small wave under the Hz label. Uses the engine's analyser when audio runs (≈24 fps canvas),
+ * otherwise a cheap CSS-animated SVG sine.
+ */
+export function Waveform({ playing }: { playing: boolean }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const analyser = playing ? services.audio.getAnalyser() : null;
+
+  useEffect(() => {
+    const c = canvas.current;
+    if (!analyser || !c) return;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+    const data = new Uint8Array(analyser.fftSize);
+    let raf = 0;
+    let last = 0;
+    const color = getComputedStyle(c).color;
+    const draw = (t: number) => {
+      raf = requestAnimationFrame(draw);
+      if (t - last < 42 || document.hidden) return;
+      last = t;
+      const dpr = window.devicePixelRatio || 1;
+      const w = (c.width = c.clientWidth * dpr);
+      const h = (c.height = c.clientHeight * dpr);
+      analyser.getByteTimeDomainData(data);
+      ctx.clearRect(0, 0, w, h);
+      ctx.lineWidth = 2.5 * dpr;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      const step = Math.max(1, Math.floor(data.length / 120));
+      for (let i = 0, x = 0; i < data.length; i += step, x++) {
+        const px = (i / data.length) * w;
+        const py = h / 2 + ((data[i] - 128) / 128) * h * 1.6;
+        if (x === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [analyser]);
+
+  if (analyser) return <canvas ref={canvas} className="wave" aria-hidden="true" />;
+  let d = 'M0 18';
+  for (let x = 0; x <= 420; x += 15) d += ` Q${x + 7.5} ${x % 30 === 0 ? 6 : 30} ${x + 15} 18`;
+  return (
+    <svg className="wave wave--idle" viewBox="0 0 360 36" preserveAspectRatio="none" data-paused={!playing} aria-hidden="true">
+      <path d={d} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" opacity={playing ? 1 : 0.4} />
+    </svg>
+  );
+}

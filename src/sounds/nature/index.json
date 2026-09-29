@@ -1,0 +1,150 @@
+[
+  {
+    "id": "rain_01",
+    "name": "창가의 비",
+    "emoji": "🌧",
+    "category": "nature",
+    "bus": "ambient",
+    "useCases": [
+      "focus",
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.6,
+    "source": "synth",
+    "synth": "rain",
+    "thumb": "rain",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "waves_01",
+    "name": "파도",
+    "emoji": "🌊",
+    "category": "nature",
+    "bus": "ambient",
+    "useCases": [
+      "focus",
+      "relax",
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.55,
+    "source": "synth",
+    "synth": "waves",
+    "thumb": "waves",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "forest_01",
+    "name": "숲",
+    "emoji": "🌲",
+    "category": "nature",
+    "bus": "ambient",
+    "useCases": [
+      "focus",
+      "relax"
+    ],
+    "loop": true,
+    "volume": 0.55,
+    "source": "synth",
+    "synth": "forest",
+    "thumb": "forest",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "wind_01",
+    "name": "바람",
+    "emoji": "🍃",
+    "category": "nature",
+    "bus": "ambient",
+    "useCases": [
+      "relax",
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.5,
+    "source": "synth",
+    "synth": "wind",
+    "thumb": "wind",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "birds_01",
+    "name": "새소리",
+    "emoji": "🐦",
+    "category": "nature",
+    "bus": "ambient",
+    "useCases": [
+      "focus",
+      "relax"
+    ],
+    "loop": true,
+    "volume": 0.45,
+    "source": "synth",
+    "synth": "birds",
+    "thumb": "birds",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "stream_01",
+    "name": "시냇물",
+    "emoji": "💧",
+    "category": "nature",
+    "bus": "ambient",
+    "useCases": [
+      "focus",
+      "relax"
+    ],
+    "loop": true,
+    "volume": 0.5,
+    "source": "synth",
+    "synth": "stream",
+    "thumb": "stream",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "fire_01",
+    "name": "장작불",
+    "emoji": "🔥",
+    "category": "nature",
+    "bus": "ambient",
+    "useCases": [
+      "focus",
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.6,
+    "source": "synth",
+    "synth": "fire",
+    "thumb": "fire",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  }
+]

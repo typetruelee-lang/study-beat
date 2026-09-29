@@ -1,0 +1,12 @@
+.sound-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.sound-tile {
+  appearance: none; border: 0; cursor: pointer; text-align: left;
+  display: flex; align-items: center; gap: 10px; padding: 10px; min-height: 76px;
+  background: var(--surface); border-radius: var(--radius-m); box-shadow: var(--clay-sm);
+  position: relative;
+}
+.sound-tile[aria-pressed='true'] { box-shadow: 0 0 0 3px var(--primary), var(--clay-sm); }
+.sound-tile__name { font-weight: 750; font-size: 16px; line-height: 1.25; }
+.sound-tile__meta { font-size: 13px; color: var(--ink-faint); }
+.sound-tile__check { position: absolute; top: 6px; right: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 13px; display: grid; place-items: center; }
+.mix-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }

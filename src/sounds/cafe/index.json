@@ -1,0 +1,105 @@
+[
+  {
+    "id": "cafe_01",
+    "name": "카페",
+    "emoji": "☕",
+    "category": "cafe",
+    "bus": "ambient",
+    "useCases": [
+      "focus"
+    ],
+    "loop": true,
+    "volume": 0.5,
+    "source": "synth",
+    "synth": "cafe",
+    "thumb": "cafe",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "library_01",
+    "name": "도서관",
+    "emoji": "📚",
+    "category": "cafe",
+    "bus": "ambient",
+    "useCases": [
+      "focus"
+    ],
+    "loop": true,
+    "volume": 0.6,
+    "source": "synth",
+    "synth": "library",
+    "thumb": "library",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "train_01",
+    "name": "기차",
+    "emoji": "🚆",
+    "category": "cafe",
+    "bus": "ambient",
+    "useCases": [
+      "focus",
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.55,
+    "source": "synth",
+    "synth": "train",
+    "thumb": "train",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "city_night_01",
+    "name": "밤의 도시",
+    "emoji": "🌃",
+    "category": "cafe",
+    "bus": "ambient",
+    "useCases": [
+      "focus",
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.5,
+    "source": "synth",
+    "synth": "cityNight",
+    "thumb": "city",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  },
+  {
+    "id": "window_rain_01",
+    "name": "빗속 창가",
+    "emoji": "🪟",
+    "category": "cafe",
+    "bus": "ambient",
+    "useCases": [
+      "focus",
+      "sleep"
+    ],
+    "loop": true,
+    "volume": 0.55,
+    "source": "synth",
+    "synth": "windowRain",
+    "thumb": "rain",
+    "license": {
+      "name": "Original (procedural)",
+      "commercialUse": true,
+      "attributionRequired": false
+    }
+  }
+]

@@ -1,0 +1,17 @@
+.mode-hero { border-radius: var(--radius-l); overflow: hidden; box-shadow: var(--clay); height: 210px; background: var(--surface); }
+.mode-hero--small { height: 150px; }
+.big-time { font-size: var(--t-display); font-weight: 850; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.05; text-align: center; }
+.big-time--xl { font-size: 76px; }
+.hz-line { text-align: center; color: var(--ink-soft); font-weight: 650; }
+.hz-line b { color: var(--ink); font-size: 20px; }
+.sound-line { text-align: center; font-size: 19px; font-weight: 750; }
+.sticky-cta { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; width: 100%; max-width: 480px; padding: 12px var(--gutter) calc(16px + var(--safe-bottom)); background: linear-gradient(to top, var(--bg) 70%, transparent); z-index: 20; }
+.link-row { display: flex; gap: 10px; }
+.link-row > * { flex: 1; }
+.ready { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; padding-top: 12px; }
+.ready__line { font-size: 20px; font-weight: 750; }
+.session-status { text-align: center; font-size: 20px; font-weight: 750; color: var(--ink-soft); }
+.session-meta { display: flex; flex-direction: column; gap: 6px; align-items: center; color: var(--ink-soft); font-weight: 650; }
+.session-controls { display: flex; gap: 12px; }
+.session-controls > * { flex: 1; }
+.result-emoji { font-size: 44px; }
