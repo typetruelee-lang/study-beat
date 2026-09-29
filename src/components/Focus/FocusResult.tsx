@@ -5,6 +5,7 @@ import { useAppState } from '../../app/store';
 import { formatDuration } from '../../lib/format';
 import { growthStage } from '../../storage/stats';
 import { ClayButton } from '../common/ClayButton';
+import { ScreenHeader } from '../common/ScreenHeader';
 import { GrowthTree } from '../scenes/GrowthTree';
 import './focus.css';
 
@@ -18,7 +19,8 @@ export function FocusResult() {
 
   if (!result) {
     return (
-      <div className="screen screen--bare stack center" style={{ paddingTop: 80 }}>
+      <div className="screen screen--bare stack center">
+        <ScreenHeader title="집중 결과" onBack={() => navigate('/', { replace: true })} />
         <p className="h2">기록할 집중시간이 없어요</p>
         <p className="muted">1분 이상 집중하면 기록돼요.</p>
         <ClayButton variant="primary" block onClick={() => navigate('/', { replace: true })}>홈으로</ClayButton>
@@ -26,12 +28,17 @@ export function FocusResult() {
     );
   }
 
+  const goHome = () => {
+    dismissResult();
+    navigate('/', { replace: true });
+  };
   const before = growthStage(today - result.focusedSeconds, goalMinutes);
   const after = growthStage(today, goalMinutes);
 
   return (
     <div className="screen screen--bare stack center">
-      <div style={{ paddingTop: 24 }} className="stack-s">
+      <ScreenHeader title="집중 결과" onBack={goHome} onHome={goHome} />
+      <div className="stack-s">
         <span className="result-emoji" aria-hidden="true">{result.completed ? '🎉' : '👏'}</span>
         <p className="h1">{result.completed ? '집중 완료!' : '수고했어요'}</p>
       </div>
@@ -73,7 +80,7 @@ export function FocusResult() {
           다시 집중
         </ClayButton>
       </div>
-      <ClayButton variant="ghost" onClick={() => { dismissResult(); navigate('/', { replace: true }); }}>홈으로</ClayButton>
+      <ClayButton variant="ghost" onClick={goHome}>홈으로 가기</ClayButton>
     </div>
   );
 }

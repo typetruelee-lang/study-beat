@@ -79,7 +79,7 @@ s = await state();
 check('audio stopped after completion', !s.player.playing && !s.session, s.player);
 
 // ── stats + home reflect the record
-await page.getByRole('button', { name: '홈으로' }).click();
+await page.getByRole('button', { name: '홈으로', exact: true }).click();
 await page.clock.runFor(300);
 check('home goal card shows 25분', (await page.locator('.goal-card').innerText()).includes('25분'));
 await page.getByRole('link', { name: /기록/ }).click();
@@ -162,6 +162,48 @@ await page.getByRole('button', { name: '삭제하기' }).click();
 await page.clock.runFor(300);
 s = await state();
 check('records deleted (state + storage)', s.sessions.length === 0 && (await page.evaluate(() => localStorage.getItem('focusclay.sessions.v1'))) === null);
+
+// ── navigation: every sub-screen reaches home in one tap
+const onHome = async () => (await page.evaluate(() => location.hash)) === '#/' && (await page.getByText('지금 무엇을 할까요?').isVisible());
+const subRoutes = ['/focus', '/focus/ready', '/focus/result', '/sleep', '/relax', '/mixer', '/binaural', '/timer', '/settings/licenses', '/now'];
+const noHome = [];
+for (const r of subRoutes) {
+  await page.goto(`http://localhost:4182/#${r}`);
+  await page.clock.runFor(300);
+  await page.locator('.screen-header').getByRole('button', { name: '홈으로', exact: true }).click();
+  await page.clock.runFor(300);
+  if (!(await onHome())) noHome.push(r);
+}
+check('every sub-screen has a one-tap home button', noHome.length === 0, noHome);
+
+// back button returns to the previous step
+await page.goto('http://localhost:4182/#/');
+await page.clock.runFor(300);
+await page.getByRole('button', { name: /집중 \/ 공부/ }).click();
+await page.getByRole('button', { name: /타이머 설정/ }).click();
+await page.getByRole('button', { name: '뒤로 가기' }).click();
+await page.clock.runFor(300);
+check('back returns to the previous step (timer → focus)', (await page.evaluate(() => location.hash)) === '#/focus');
+
+// leaving a running focus session keeps it running, mini player brings you back
+await page.getByRole('button', { name: '▶ 집중 시작' }).click();
+await page.getByRole('button', { name: '집중 시작', exact: true }).click();
+await page.clock.runFor(1000);
+await page.getByRole('button', { name: '뒤로 가기' }).click();
+await page.clock.runFor(1000);
+s = await state();
+check('back from focus session goes home and the session keeps running', (await onHome()) && s.session?.status === 'running');
+await page.clock.fastForward('02:00');
+await page.clock.runFor(600);
+check('time keeps recording while on another screen', Math.round((await state()).session.focusedMs / 60000) === 2);
+await page.locator('.mini').click();
+await page.clock.runFor(300);
+await page.getByRole('button', { name: '모드 화면' }).click();
+await page.clock.runFor(300);
+check('mini player → now playing → back to the focus session', (await page.evaluate(() => location.hash)) === '#/focus/session');
+await page.getByRole('button', { name: '■ 종료' }).click();
+await page.getByRole('button', { name: '종료하고 기록하기' }).click();
+await page.clock.runFor(2000);
 
 check('no page errors', errors.length === 0, errors);
 await browser.close();

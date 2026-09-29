@@ -5,6 +5,7 @@ import { describeSession, useMainSound } from '../../app/hooks';
 import { useAppState } from '../../app/store';
 import { formatDuration } from '../../lib/format';
 import { ClayButton } from '../common/ClayButton';
+import { ScreenHeader } from '../common/ScreenHeader';
 import { Sheet } from '../common/Sheet';
 import { StudyScene } from '../scenes/StudyScene';
 import { Waveform } from '../AudioPlayer/Waveform';
@@ -31,7 +32,9 @@ export function FocusSession() {
 
   return (
     <div className="screen screen--bare stack">
-      <div className="mode-hero mode-hero--small" style={{ marginTop: 8 }}><StudyScene id="focus-live" active={running} /></div>
+      {/* Leaving this screen keeps the session running; the mini player brings you back. */}
+      <ScreenHeader title={view.isBreak ? '휴식 중' : '집중 중'} onBack={() => navigate('/')} />
+      <div className="mode-hero mode-hero--small"><StudyScene id="focus-live" active={running} /></div>
       <div className="stack-s" style={{ marginTop: 8 }}>
         <p className="big-time big-time--xl" aria-live="off">{view.bigTime}</p>
         <p className="session-status">{view.status}</p>
