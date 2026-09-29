@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { HashRouter, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { Home } from '../components/Home/Home';
 import { FocusSetup } from '../components/Focus/FocusSetup';
 import { FocusReady } from '../components/Focus/FocusReady';
@@ -21,6 +21,10 @@ import { AwaySheet } from '../components/Session/AwaySheet';
 import { Splash } from './Splash';
 import { initApp } from './actions';
 import { useAppState } from './store';
+
+// Hash routes in the WebView; in-memory routes for the web preview build (VITE_ROUTER=memory),
+// where the host page owns the URL.
+const Router = import.meta.env.VITE_ROUTER === 'memory' ? MemoryRouter : HashRouter;
 
 const TAB_ROUTES = ['/', '/library', '/stats', '/settings'];
 const NO_MINI = ['/focus/session', '/focus/ready', '/focus/result', '/now'];
@@ -77,8 +81,8 @@ export function App() {
   }, []);
   if (!ready || minDelay) return <Splash />;
   return (
-    <HashRouter>
+    <Router>
       <Shell />
-    </HashRouter>
+    </Router>
   );
 }
