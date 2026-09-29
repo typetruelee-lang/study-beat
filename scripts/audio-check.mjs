@@ -57,7 +57,37 @@ const results = await page.evaluate(async () => {
     check('stop() fades to silence', rms(L, 3.2 * SR, 3.9 * SR) < 1e-4 && maxStep(L) < 0.05, { tail: rms(L, 3.2 * SR, 3.9 * SR) });
   }
 
-  if (window.__extraAudioChecks) out.push(...(await window.__extraAudioChecks()));
+  // 3) every procedural recipe renders sane levels (no NaN, no clipping, audible)
+  {
+    const { startSynth, SYNTH_IDS } = await import('/src/audio/ambient/synths.ts');
+    for (const id of SYNTH_IDS) {
+      const ctx = new OfflineAudioContext(2, SR * 4, SR);
+      const t0 = performance.now();
+      startSynth(ctx, id, ctx.destination);
+      const build = performance.now() - t0;
+      const buf = await ctx.startRendering();
+      const L = buf.getChannelData(0), R = buf.getChannelData(1);
+      let peak = 0, nan = false;
+      for (let i = 0; i < L.length; i++) {
+        if (Number.isNaN(L[i]) || Number.isNaN(R[i])) nan = true;
+        peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
+      }
+      const level = Math.max(rms(L, SR, 4 * SR), rms(R, SR, 4 * SR));
+      check(`synth ${id}: rms ${level.toFixed(3)} peak ${peak.toFixed(2)} build ${build.toFixed(0)}ms`, !nan && peak < 1.5 && level > 0.01 && level < 0.6 && build < 300, { nan, peak, level, build });
+    }
+  }
+
+  // 4) noise colours: white brighter than pink brighter than brown (rendered through Web Audio)
+  {
+    const { noiseBuffer } = await import('/src/audio/ambient/buffers.ts');
+    const { brightness } = await import('/src/audio/noise/generators.ts');
+    const ctx = new OfflineAudioContext(2, SR, SR);
+    const [w, p, b] = ['white', 'pink', 'brown'].map((c) => brightness(noiseBuffer(ctx, c).getChannelData(0)));
+    check('noise slope white > pink > brown', w > p && p > b, { w, p, b });
+    const nb = noiseBuffer(ctx, 'brown').getChannelData(0);
+    const seam = Math.abs(nb[0] - nb[nb.length - 1]);
+    check('brown noise loop seam has no jump', seam < 0.05, { seam });
+  }
   return out;
 });
 
