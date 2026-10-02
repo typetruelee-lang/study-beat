@@ -14,7 +14,7 @@ npm run build:site   # 웹사이트용(aura 다크 스킨 + 광고 자리): 앱 
 npm run dev:web      # 웹 스킨으로 개발 서버
 npm run serve        # 위 빌드를 Node 서버로 제공 (http://localhost:8080)
 npm run perf         # 화면별 메인 스레드 사용량
-node scripts/build-preview.mjs  # 브라우저 미리보기용 단일 HTML
+node scripts/build-preview.mjs [out.html] [web]  # 브라우저 미리보기용 단일 HTML (web = aura 스킨)
 ```
 
 ## 진행 상황
