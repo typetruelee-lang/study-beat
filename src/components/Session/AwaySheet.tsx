@@ -15,7 +15,7 @@ export function AwaySheet() {
         <span style={{ fontSize: 40 }} aria-hidden="true">⏸</span>
         <p className="h2">집중 기록이 잠시 멈췄어요</p>
         <p className="muted">
-          화면이 꺼지거나 FOCUS CLAY를 벗어난 동안은 집중시간에 기록하지 않았어요. 소리는 계속 나오고 있어요.
+          화면이 꺼지거나 몰입각을 벗어난 동안은 집중시간에 기록하지 않았어요. 소리는 계속 나오고 있어요.
           <br />
           화면을 끄고 공부하려면 ☀ 화면 설정의 검은 화면을 써 보세요.
         </p>

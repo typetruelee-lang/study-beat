@@ -71,7 +71,7 @@ function syncMediaSession() {
   const { player, session } = getState();
   const active = player.playing || !!session;
   const main = player.tracks.map((t) => getSound(t.id)).find((m) => m?.bus === 'ambient') ?? getSound(player.tracks[0]?.id ?? '');
-  const title = main?.name ?? (player.binauralOn ? `집중 사운드 ${player.beat}Hz` : 'FOCUS CLAY');
+  const title = main?.name ?? (player.binauralOn ? `집중 사운드 ${player.beat}Hz` : '몰입각');
   const key = `${active}|${title}|${player.mode}|${player.playing}`;
   if (key === lastMediaKey) return;
   lastMediaKey = key;

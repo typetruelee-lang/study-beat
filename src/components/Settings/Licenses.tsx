@@ -7,7 +7,7 @@ export function Licenses() {
     <div className="screen screen--bare stack">
       <ScreenHeader title="사운드 출처·라이선스" />
       <p className="small muted">
-        현재 모든 소리는 FOCUS CLAY가 기기 안에서 실시간으로 만들어내는 자체 제작(절차적 생성) 사운드예요.
+        현재 모든 소리는 몰입각이 기기 안에서 실시간으로 만들어내는 자체 제작(절차적 생성) 사운드예요.
         녹음 음원이 추가되면 출처와 이용 조건이 여기에 표시돼요.
       </p>
       <div className="card list" style={{ padding: '4px 20px' }}>

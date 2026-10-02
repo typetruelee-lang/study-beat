@@ -16,7 +16,7 @@ export function updateMediaSession(info: MediaInfo | null, handlers: { play: () 
       ms.playbackState = 'none';
       return;
     }
-    ms.metadata = new MediaMetadata({ title: info.title, artist: 'FOCUS CLAY', album: info.mode });
+    ms.metadata = new MediaMetadata({ title: info.title, artist: '몰입각', album: info.mode });
     ms.playbackState = info.playing ? 'playing' : 'paused';
     ms.setActionHandler('play', handlers.play);
     ms.setActionHandler('pause', handlers.pause);

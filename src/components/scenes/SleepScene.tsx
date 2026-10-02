@@ -27,8 +27,8 @@ export function SleepScene({ id = 'sleep', active = true }: { id?: string; activ
         <ClayDefs id={id} palette={P} />
         <defs>
           <linearGradient id={`${id}-sky`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#1b2548" />
-            <stop offset="1" stopColor="#35457d" />
+            <stop offset="0" stopColor="#6f7bcf" />
+            <stop offset="1" stopColor="#b3baee" />
           </linearGradient>
           <radialGradient id={`${id}-moonglow`}>
             <stop offset="0" stopColor="#fff0b3" stopOpacity="0.45" />
@@ -41,7 +41,7 @@ export function SleepScene({ id = 'sleep', active = true }: { id?: string; activ
         ))}
         <circle cx="286" cy="52" r="56" fill={`url(#${id}-moonglow)`} />
         <circle cx="286" cy="52" r="28" fill={fill(id, 'moon')} />
-        <circle cx="300" cy="42" r="24" fill="#26325f" />
+        <circle cx="300" cy="42" r="24" fill="#7581d2" />
         <g className="anim-drift">
           <ellipse cx="120" cy="80" rx="34" ry="14" fill={fill(id, 'cloud')} opacity="0.85" />
           <ellipse cx="140" cy="72" rx="22" ry="14" fill={fill(id, 'cloud')} opacity="0.85" />

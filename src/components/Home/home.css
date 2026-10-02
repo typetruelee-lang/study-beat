@@ -30,9 +30,9 @@
 .mode-card__title { font-size: 20px; font-weight: 850; letter-spacing: -0.02em; margin: 1px 0; }
 .mode-card__desc { color: var(--ink-soft); font-size: 14px; }
 .mode-card__go { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--primary-soft); color: var(--ink); font-size: 18px; flex: none; }
-.mode-card--sleep { background: #25305a; color: #eef0fb; }
-.mode-card--sleep .mode-card__kicker, .mode-card--sleep .mode-card__desc { color: #b9bfdc; }
-.mode-card--sleep .mode-card__go { background: #36427a; color: #eef0fb; }
+.mode-card--sleep { background: #e7e9fb; color: #1f2440; }
+.mode-card--sleep .mode-card__kicker, .mode-card--sleep .mode-card__desc { color: #565d80; }
+.mode-card--sleep .mode-card__go { background: #d3d8f7; color: #1f2440; }
 :root.skin-aura .mode-card--sleep { background: var(--surface); color: var(--ink); }
 :root.skin-aura .mode-card--sleep .mode-card__kicker, :root.skin-aura .mode-card--sleep .mode-card__desc { color: var(--ink-soft); }
 :root.skin-aura .mode-card--sleep .mode-card__go { background: var(--primary-soft); }

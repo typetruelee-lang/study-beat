@@ -8,7 +8,7 @@ const PORT = 4210;
 const base = `http://localhost:${PORT}`;
 const server = spawn(process.execPath, ['server/index.mjs'], { env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1' }, stdio: 'pipe' });
 await new Promise((resolve, reject) => {
-  server.stdout.on('data', (d) => String(d).includes('FOCUS CLAY') && resolve());
+  server.stdout.on('data', (d) => String(d).includes('몰입각') && resolve());
   server.on('exit', (c) => reject(new Error(`server exited ${c}`)));
 });
 

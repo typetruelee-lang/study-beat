@@ -12,7 +12,7 @@ const dir = 'dist-preview/app';
 const html = readFileSync(join(dir, 'index.html'), 'utf8');
 const css = [...html.matchAll(/<link rel="stylesheet"[^>]*href="\.\/([^"]+)"[^>]*>/g)].map((m) => readFileSync(join(dir, m[1]), 'utf8'));
 const js = [...html.matchAll(/<script type="module"[^>]*src="\.\/([^"]+)"[^>]*><\/script>/g)].map((m) => readFileSync(join(dir, m[1]), 'utf8'));
-const page = `<title>${mode === 'web' ? 'FOCUS CLAY Web' : 'FOCUS CLAY'}</title>
+const page = `<title>${mode === 'web' ? '몰입각 Web' : '몰입각'}</title>
 <style>${css.join('\n')}
 html, body { background: ${mode === 'web' ? '#07080f' : '#f5f2ee'}; }</style>
 <div id="root"></div>

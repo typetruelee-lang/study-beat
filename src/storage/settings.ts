@@ -80,7 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dailyGoalMinutes: 120,
   awayDetection: true,
   keepScreenOnByMode: { focus: true, sleep: false, relax: false },
-  dimByMode: { focus: 0, sleep: 0.4, relax: 0 },
+  dimByMode: { focus: 0, sleep: 0, relax: 0 },
   autoCurtainMinutes: null,
   backgroundPlayback: true,
   endSound: 'bell',

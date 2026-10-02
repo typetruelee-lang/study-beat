@@ -57,24 +57,25 @@
   --t-tiny: 13px;
 }
 
+/* Sleep: soft lavender. Apps in Toss non-game mini-apps must use a light theme, so the Toss build
+   stays light at night too (the opt-in black screen mode is there for a dark room). */
 .theme-sleep {
-  --bg: #19223f;
-  --surface: #25305a;
-  --surface-2: #2e3a68;
-  --ink: #eef0fb;
-  --ink-soft: #b9bfdc;
-  --ink-faint: #9aa1c4;
-  --line: rgba(220, 225, 255, 0.12);
-  --primary: #9ea8f0;
-  --primary-press: #8c96e6;
-  --primary-ink: #1c2344;
-  --primary-soft: #36427a;
-  --surface-solid: #25305a;
-  --line: rgba(220, 225, 255, 0.12);
-  --clay: 0 0 0 1px var(--line), 0 10px 28px rgba(0, 0, 0, 0.3);
-  --clay-sm: 0 0 0 1px var(--line), 0 3px 8px rgba(0, 0, 0, 0.2);
-  --clay-pressed: 0 0 0 1px var(--line), inset 0 2px 8px rgba(0, 0, 0, 0.35);
-  --btn-primary: linear-gradient(180deg, #aab3f5, #8d97ea);
+  --bg: #eef0fa;
+  --surface: #ffffff;
+  --surface-2: #e3e6f6;
+  --surface-solid: #ffffff;
+  --ink: #1f2440;
+  --ink-soft: #565d80;
+  --ink-faint: #767c9c;
+  --line: rgba(40, 50, 110, 0.12);
+  --primary: #5b6be0;
+  --primary-press: #4a59d0;
+  --primary-ink: #ffffff;
+  --primary-soft: #dfe3fb;
+  --clay: 0 0 0 1px var(--line), 0 8px 24px rgba(40, 50, 110, 0.08);
+  --clay-sm: 0 0 0 1px var(--line), 0 2px 6px rgba(40, 50, 110, 0.06);
+  --clay-pressed: 0 0 0 1px var(--line), inset 0 2px 6px rgba(40, 50, 110, 0.12);
+  --btn-primary: linear-gradient(180deg, #6d7cec, #5464da);
 }
 
 /* ── aura skin (web) ───────────────────────────────────────────────────── */

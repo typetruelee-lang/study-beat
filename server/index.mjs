@@ -92,5 +92,5 @@ if (!existsSync(join(ROOT, 'index.html'))) {
   process.exit(1);
 }
 server.listen(PORT, HOST, () => {
-  console.log(`FOCUS CLAY: http://localhost:${PORT}/  ·  engine demo: http://localhost:${PORT}/engine/`);
+  console.log(`몰입각: http://localhost:${PORT}/  ·  engine demo: http://localhost:${PORT}/engine/`);
 });

@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { IconButton } from './ClayButton';
+import { isInToss } from '../../platform/toss';
 import './common.css';
 
 /**
  * Sub-screen header: back (‹) on the left, home (⌂) on the right, so every screen has a
- * one-tap way home however deep it is.
+ * one-tap way home however deep it is. Inside Toss the native navigation bar has the back
+ * button, so ours is hidden (Apps in Toss review: never show both).
  */
 export function ScreenHeader({
   title,
@@ -27,9 +29,13 @@ export function ScreenHeader({
   const goHome = onHome ?? (() => navigate('/'));
   return (
     <header className="screen-header">
-      <IconButton flat aria-label="뒤로 가기" onClick={onBack ?? (() => (canGoBack ? navigate(-1) : navigate('/')))}>
-        ‹
-      </IconButton>
+      {isInToss() ? (
+        <span />
+      ) : (
+        <IconButton flat aria-label="뒤로 가기" onClick={onBack ?? (() => (canGoBack ? navigate(-1) : navigate('/')))}>
+          ‹
+        </IconButton>
+      )}
       <h1 className="screen-header__title">{title}</h1>
       <div className="screen-header__right">
         {right}

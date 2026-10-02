@@ -1,4 +1,4 @@
-# FOCUS CLAY web site: app (/) + sound engine & demo (/engine/)
+# 몰입각 web site: app (/) + sound engine & demo (/engine/)
 #   docker build -t focus-clay . && docker run -p 8080:8080 focus-clay
 FROM node:22-alpine AS build
 WORKDIR /app

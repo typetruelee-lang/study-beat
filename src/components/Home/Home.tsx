@@ -32,7 +32,7 @@ export function Home() {
       <div className="home-glow" aria-hidden="true" />
       <header className="home-header">
         <p className="home-eyebrow">{weekday}</p>
-        <h1 className="home-title">FOCUS CLAY</h1>
+        <h1 className="home-title">몰입각</h1>
         <p className="home-sub">공부할 때 틀어두는 집중 사운드</p>
       </header>
 

@@ -32,6 +32,16 @@ describe('copy guard', () => {
     expect(hits).toEqual([]);
   });
 
+  it('the app is called 몰입각 on screen (old name only in comments)', () => {
+    const hits: string[] = [];
+    for (const f of files(dirname(fileURLToPath(import.meta.url))).filter((f) => f.endsWith('.tsx'))) {
+      readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
+        if (/FOCUS CLAY/.test(line) && !/^\s*(\/\/|\*|\/\*)/.test(line)) hits.push(`${f}:${i + 1} ${line.trim()}`);
+      });
+    }
+    expect(hits).toEqual([]);
+  });
+
   it('every sound declares source and license', () => {
     for (const s of SOUNDS) {
       expect(['synth', 'file']).toContain(s.source);

@@ -129,3 +129,7 @@
 .ring svg { display: block; }
 .ring__center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 :root.skin-aura { --ring-a: #9c86ff; --ring-b: #4fb3ff; }
+
+/* TDS parts (Toss build) — keep spacing in line with the clay layout */
+.tds-sheet-body { padding: 4px var(--gutter) calc(24px + var(--safe-bottom)); max-height: 80vh; overflow-y: auto; color: var(--ink); }
+.tds-btn { white-space: nowrap; }

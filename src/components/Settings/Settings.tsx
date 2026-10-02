@@ -53,7 +53,7 @@ export function Settings() {
       <section className="card" aria-label="집중 도움">
         <ToggleRow
           title="집중 이탈 감지"
-          description="집중 중 FOCUS CLAY 화면을 벗어나면 기록을 잠시 멈추고, 돌아오면 이어서 할지 물어봐요. 끄면 화면을 벗어나도 시간이 계속 기록돼요."
+          description="집중 중 몰입각 화면을 벗어나면 기록을 잠시 멈추고, 돌아오면 이어서 할지 물어봐요. 끄면 화면을 벗어나도 시간이 계속 기록돼요."
           checked={s.awayDetection}
           onChange={(v) => updateSettings({ awayDetection: v })}
         />
@@ -97,7 +97,7 @@ export function Settings() {
 
       <div className="notice">
         <span aria-hidden="true">ℹ️</span>
-        <span>FOCUS CLAY는 공부·휴식·수면을 위한 배경 사운드 앱이에요. 의료기기가 아니며, 건강 상태를 진단하거나 개선하는 기능은 없어요.</span>
+        <span>몰입각은 공부·휴식·수면을 위한 배경 사운드 앱이에요. 의료기기가 아니며, 건강 상태를 진단하거나 개선하는 기능은 없어요.</span>
       </div>
 
       <Sheet open={confirm} onClose={() => setConfirm(false)} label="집중 기록 삭제 확인">

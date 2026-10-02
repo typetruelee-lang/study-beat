@@ -25,7 +25,7 @@ export function Statistics() {
     <div className="screen stack">
       <header style={{ paddingTop: 8 }} className="stack-s">
         <h1 className="h1">기록</h1>
-        <p className="small muted">FOCUS CLAY 집중 세션에서 기록된 시간이에요. 일시정지하거나 앱을 벗어난 시간은 빠져요.</p>
+        <p className="small muted">몰입각 집중 세션에서 기록된 시간이에요. 일시정지하거나 앱을 벗어난 시간은 빠져요.</p>
       </header>
 
       <section className="card stack-s" aria-label="오늘">

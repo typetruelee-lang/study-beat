@@ -18,7 +18,9 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? 
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+// TDS's Toss provider logs this outside the Toss app (no native safe-area bridge) — expected in previews.
+const EXPECTED = /^SafeAreaInsets를 가져오는 중/;
+page.on('console', (m) => m.type() === 'error' && !EXPECTED.test(m.text()) && errors.push(m.text()));
 
 if (process.env.SEED === '1') {
   // Sample week of records so the stats screens have something to show.

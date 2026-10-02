@@ -29,7 +29,7 @@ const setVisible = (visible) =>
 await page.clock.install({ time: new Date(2026, 8, 30, 14, 0, 0) });
 await page.goto('http://localhost:4182/');
 await page.clock.runFor(1000);
-await page.getByText('FOCUS CLAY').first().waitFor();
+await page.getByText('몰입각').first().waitFor();
 
 // ── Home → focus in two taps
 let taps = 0;
@@ -334,6 +334,19 @@ await page.getByRole('button', { name: /^⭐ 시험기간 카페/ }).click();
 await page.clock.runFor(400);
 s = await state();
 check('favorite mix is saved, survives reload and loads with one tap', s.settings.favorites.length === 1 && s.player.tracks[0].id === 'cafe_01' && (await page.evaluate(() => location.hash)) === '#/focus/ready', { fav: s.settings.favorites, tracks: s.player.tracks });
+
+// ── Apps in Toss review rules that a browser can check
+await page.goto('http://localhost:4182/#/sleep');
+await page.clock.runFor(600);
+const sleepBg = await page.evaluate(() => getComputedStyle(document.querySelector('.app-root')).backgroundColor);
+const lum = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; };
+check('sleep screen is light (non-game mini-apps must use light mode)', lum(sleepBg) > 0.8, sleepBg);
+const viewport = await page.evaluate(() => document.querySelector('meta[name=viewport]').content);
+check('pinch zoom is off', /user-scalable=no/.test(viewport) && /maximum-scale=1/.test(viewport), viewport);
+await page.goto('http://localhost:4182/sleep');
+await page.clock.runFor(800);
+check('deep link path /sleep opens the sleep screen', (await page.evaluate(() => location.hash)) === '#/sleep', await page.evaluate(() => location.href));
+check('page title is the app name', (await page.title()) === '몰입각', await page.title());
 
 check('no page errors', errors.length === 0, errors);
 await browser.close();

@@ -1,5 +1,5 @@
 {
-  "name": "focus-clay",
+  "name": "molip-gak",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -20,10 +20,15 @@
     "build:site": "tsc --noEmit && vite build --mode web && npm run build:engine",
     "serve": "node server/index.mjs",
     "test:server": "node scripts/server-check.mjs",
-    "dev:web": "vite --mode web"
+    "dev:web": "vite --mode web",
+    "check:toss": "node scripts/toss-preflight.mjs",
+    "store-assets": "node scripts/store-assets.mjs"
   },
   "dependencies": {
     "@apps-in-toss/web-framework": "^3.6.0",
+    "@emotion/react": "^11.14.0",
+    "@toss/tds-mobile": "^2.5.1",
+    "@toss/tds-mobile-ait": "^2.5.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.6"

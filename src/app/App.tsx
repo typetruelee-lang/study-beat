@@ -46,8 +46,8 @@ function Shell() {
   }, [pathname]);
   useEffect(() => {
     if (IS_WEB_SKIN) return; // the web skin is dark everywhere
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#19223f' : '#f5f2ee');
-    document.body.style.background = dark ? '#19223f' : '';
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#eef0fa' : '#f5f2ee');
+    document.body.style.background = dark ? '#eef0fa' : '';
   }, [dark]);
 
   return (
