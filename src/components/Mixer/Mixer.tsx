@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { play, setBinauralOn, setBusVolume, setMasterVolume, setTrackVolume, stopPlayback, toggleTrack } from '../../app/actions';
+import { play, setBeatKind, setBinauralOn, setBusVolume, setMasterVolume, setTrackVolume, stopPlayback, toggleTrack } from '../../app/actions';
+import { FavoriteSave } from '../Recipes/FavoriteSave';
 import { bandLabel, beatLabel } from '../../app/beats';
 import { useAppState } from '../../app/store';
 import { getSound } from '../../sounds/catalog';
@@ -23,6 +24,7 @@ export function Mixer() {
   const session = useAppState((s) => s.session);
   const bus = useAppState((s) => s.settings.busVolumes);
   const master = useAppState((s) => s.settings.masterVolume);
+  const kind = useAppState((s) => s.settings.beatKind);
   const ambient = player.tracks.filter((t) => getSound(t.id)?.bus === 'ambient');
   const noise = player.tracks.find((t) => getSound(t.id)?.bus === 'noise');
 
@@ -42,7 +44,11 @@ export function Mixer() {
           checked={player.binauralOn}
           onChange={setBinauralOn}
         />
-        <Slider label="볼륨" value={bus.binaural} onChange={(v) => setBusVolume('binaural', v)} />
+        <Slider label="강도" value={bus.binaural} onChange={(v) => setBusVolume('binaural', v)} />
+        <div className="chips" role="radiogroup" aria-label="듣는 방식">
+          <button type="button" role="radio" className="chip" aria-checked={kind === 'binaural'} onClick={() => setBeatKind('binaural')}>🎧 이어폰용</button>
+          <button type="button" role="radio" className="chip" aria-checked={kind === 'isochronic'} onClick={() => setBeatKind('isochronic')}>🔈 스피커용</button>
+        </div>
         <ClayButton variant="ghost" onClick={() => navigate('/binaural')}>사운드 프리셋 바꾸기 ›</ClayButton>
       </section>
 
@@ -78,6 +84,8 @@ export function Mixer() {
         {noise && <Slider label="노이즈" value={noise.volume} onChange={(v) => setTrackVolume(noise.id, v)} />}
         <Slider label="Noise 전체" value={bus.noise} onChange={(v) => setBusVolume('noise', v)} />
       </section>
+
+      <FavoriteSave />
 
       <section className="card stack-s" aria-label="전체 볼륨">
         <Slider label="전체 볼륨" value={master} onChange={setMasterVolume} />

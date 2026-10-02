@@ -1,11 +1,13 @@
 import { useNavigate } from 'react-router-dom';
-import { setBinauralOn, updateSettings } from '../../app/actions';
+import { setBeatKind, setBinauralOn, setBusVolume, updateSettings } from '../../app/actions';
 import { bandLabel } from '../../app/beats';
 import { useAppState } from '../../app/store';
 import { formatClock } from '../../lib/format';
 import { ClayButton } from '../common/ClayButton';
 import { ChipGroup } from '../common/Chip';
 import { SoundPicks } from '../SoundLibrary/SoundPicks';
+import { Slider } from '../common/Slider';
+import { RecipeRow } from '../Recipes/RecipeRow';
 import './focus.css';
 
 const QUICK_TIMES = [25, 50, 90];
@@ -56,9 +58,13 @@ export function FocusSoundOptions() {
   const navigate = useNavigate();
   const binauralOn = useAppState((s) => s.player.binauralOn);
   const beat = useAppState((s) => s.player.beat);
+  const intensity = useAppState((s) => s.settings.busVolumes.binaural);
+  const kind = useAppState((s) => s.settings.beatKind);
 
   return (
     <section className="stack-s" aria-label="배경음과 집중 사운드">
+      <h2 className="h2">추천 사운드</h2>
+      <RecipeRow mode="focus" label="추천 집중 사운드" />
       <h2 className="h2">배경음</h2>
       <SoundPicks mode="focus" />
       <div className="row-between" style={{ marginTop: 4 }}>
@@ -70,6 +76,19 @@ export function FocusSoundOptions() {
           🎧 {binauralOn ? `켜짐 · ${beat}Hz · ${bandLabel(beat)}` : '꺼짐'}
         </button>
       </div>
+      {binauralOn && (
+        <>
+          <Slider label="강도" value={intensity} onChange={(v) => setBusVolume('binaural', v)} />
+          <div className="chips" role="radiogroup" aria-label="듣는 방식">
+            <button type="button" role="radio" className="chip" aria-checked={kind === 'binaural'} onClick={() => setBeatKind('binaural')}>
+              🎧 이어폰용 (바이노럴)
+            </button>
+            <button type="button" role="radio" className="chip" aria-checked={kind === 'isochronic'} onClick={() => setBeatKind('isochronic')}>
+              🔈 스피커용 (아이소크로닉)
+            </button>
+          </div>
+        </>
+      )}
       <ClayButton block onClick={() => navigate('/mixer')}>🎚 소리 섞기 (볼륨 조절)</ClayButton>
     </section>
   );

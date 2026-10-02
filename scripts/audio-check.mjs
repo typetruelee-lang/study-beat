@@ -57,6 +57,23 @@ const results = await page.evaluate(async () => {
     check('stop() fades to silence', rms(L, 3.2 * SR, 3.9 * SR) < 1e-4 && maxStep(L) < 0.05, { tail: rms(L, 3.2 * SR, 3.9 * SR) });
   }
 
+  // 2a) isochronic tone: one carrier in both ears, pulsing at the beat rate, click-free
+  {
+    const { IsochronicTone } = await import('/src/audio/binaural/IsochronicTone.ts');
+    for (const beatHz of [6, 10, 14]) {
+      const ctx = new OfflineAudioContext(2, SR * 4, SR);
+      new IsochronicTone(ctx, ctx.destination, { carrier: 400, beat: beatHz, fadeIn: 0.3 });
+      const L = (await ctx.startRendering()).getChannelData(0);
+      const hop = SR / 1000, env = [];
+      for (let i = SR; i + hop < 3 * SR; i += hop) { let q = 0; for (let j = 0; j < hop; j++) q += L[i + j] ** 2; env.push(Math.sqrt(q / hop)); }
+      const m = env.reduce((a, x) => a + x, 0) / env.length;
+      const e = env.map((x) => x - m);
+      const g = (f) => { const k = 2 * Math.cos((2 * Math.PI * f) / 1000); let s1 = 0, s2 = 0; for (const x of e) { const t = x + k * s1 - s2; s2 = s1; s1 = t; } return Math.sqrt(s1 * s1 + s2 * s2 - k * s1 * s2); };
+      const depth = Math.max(...env) / Math.max(1e-6, Math.min(...env));
+      check(`isochronic ${beatHz} Hz: envelope pulses at ${beatHz} Hz (depth ${depth.toFixed(0)}×), carrier 400 Hz`, g(beatHz) > 5 * g(beatHz * 0.6) && depth > 10 && goertzel(L, SR, 3 * SR, 400) > 0.02 && maxStep(L) < 0.06, { depth });
+    }
+  }
+
   // 2b) δ 2 Hz and γ 40 Hz presets: exact per-ear frequencies
   for (const beatHz of [2, 40]) {
     const ctx = new OfflineAudioContext(2, SR * 4, SR);

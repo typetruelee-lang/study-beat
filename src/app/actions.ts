@@ -5,7 +5,8 @@
 import { getSound, QUICK_PICKS } from '../sounds/catalog';
 import { holdPrewarm, prewarmSounds } from '../audio/prewarm';
 import type { UseCase } from '../sounds/types';
-import type { Bus } from '../audio/types';
+import type { BeatKind, Bus } from '../audio/types';
+import type { Recipe } from '../sounds/recipes';
 import { createId } from '../lib/id';
 import { clamp } from '../lib/format';
 import {
@@ -25,7 +26,7 @@ import { beatForProgress } from '../features/session/autoFrequency';
 import { readJson } from '../storage/KeyValueStore';
 import type { Routine } from '../storage/routines';
 import type { StudySession } from '../storage/sessions';
-import type { Settings, TrackSetting } from '../storage/settings';
+import type { FavoriteMix, Settings, TrackSetting } from '../storage/settings';
 import { onVisibilityChange } from '../platform/visibility';
 import { resetWakeLock, setKeepScreenOn } from '../platform/wakeLock';
 import { haptic } from '../platform/haptics';
@@ -180,8 +181,9 @@ function syncAudio() {
   (Object.keys(settings.busVolumes) as Bus[]).forEach((b) => audio.setBusVolume(b, settings.busVolumes[b]));
 
   if (player.binauralOn) {
-    if (audio.isBinauralOn()) audio.setBeatFrequency(player.beat);
-    else audio.startBinauralBeat({ beat: player.beat, carrier: settings.carrierHz });
+    const kind = settings.beatKind;
+    if (audio.isBinauralOn() && audio.beatKind() === kind) audio.setBeatFrequency(player.beat);
+    else audio.startBinauralBeat({ beat: player.beat, carrier: settings.carrierHz, kind });
   } else if (audio.isBinauralOn()) {
     audio.stopBinauralBeat();
   }
@@ -268,6 +270,55 @@ export function setMasterVolume(volume: number) {
 export function setCarrier(hz: number) {
   updateSettings({ carrierHz: hz });
   services.audio.setCarrierFrequency(hz);
+}
+
+/** Binaural (headphones) or isochronic (speaker-friendly). Applies live with a crossfade. */
+export function setBeatKind(kind: BeatKind) {
+  updateSettings({ beatKind: kind });
+  syncAudio();
+}
+
+/** Load a curated soundscape into its mode's mix (saved like any manual choice). */
+export function applyRecipe(recipe: Recipe) {
+  const { session } = getState();
+  if (session && session.mode !== recipe.mode) return;
+  if (getState().player.mode !== recipe.mode) selectMode(recipe.mode);
+  updateSettings((s) => ({ busVolumes: { ...s.busVolumes, binaural: recipe.intensity } }));
+  updatePlayer({
+    tracks: recipe.tracks.map((t) => ({ ...t })),
+    binauralOn: recipe.beat !== null,
+    beat: recipe.beat ?? getState().player.beat,
+  });
+  prewarmSounds(recipe.tracks.map((t) => t.id));
+}
+
+const MAX_FAVORITES = 12;
+
+/** Save the current mix as "내 믹스". */
+export function saveFavorite(name: string): FavoriteMix {
+  const { player, settings } = getState();
+  const fav: FavoriteMix = {
+    id: createId('fav'),
+    name: name.trim().slice(0, 20) || '내 믹스',
+    mode: player.mode,
+    beat: player.beat,
+    binauralOn: player.binauralOn,
+    tracks: player.tracks.map((t) => ({ ...t })),
+    intensity: settings.busVolumes.binaural,
+    createdAt: Date.now(),
+  };
+  updateSettings((s) => ({ favorites: [fav, ...s.favorites].slice(0, MAX_FAVORITES) }));
+  flushSettings();
+  return fav;
+}
+
+export function applyFavorite(fav: FavoriteMix) {
+  applyRecipe({ id: fav.id, mode: fav.mode, name: fav.name, desc: '', beat: fav.binauralOn ? fav.beat : null, tracks: fav.tracks, intensity: fav.intensity, colors: ['#000', '#000'] });
+  if (!fav.binauralOn) updatePlayer({ beat: fav.beat });
+}
+
+export function deleteFavorite(id: string) {
+  updateSettings((s) => ({ favorites: s.favorites.filter((f) => f.id !== id) }));
 }
 
 export function setBinauralOn(on: boolean) {

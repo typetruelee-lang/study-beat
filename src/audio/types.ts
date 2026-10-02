@@ -7,7 +7,14 @@ export interface BinauralParams {
   beat: number;
   /** Left-ear carrier in Hz, e.g. 400 → right ear 410 */
   carrier: number;
+  /**
+   * 'binaural' (default): different tone per ear, needs headphones.
+   * 'isochronic': one pulsing tone, works on speakers.
+   */
+  kind?: BeatKind;
 }
+
+export type BeatKind = 'binaural' | 'isochronic';
 
 /**
  * Everything the UI may ask of the sound engine. The UI never touches Web Audio nodes directly.
@@ -27,6 +34,8 @@ export interface AudioPort {
   setTrackVolume(id: string, volume: number): void;
   activeTrackIds(): string[];
   isBinauralOn(): boolean;
+  /** Which kind of beat is playing, or null. */
+  beatKind(): BeatKind | null;
   /** Raise the master level from silence. */
   fadeIn(seconds: number): void;
   /** Lower the master level to silence; resolves when done. */
@@ -72,6 +81,7 @@ export class SilentAudioPort implements AudioPort {
   setTrackVolume() {}
   activeTrackIds() { return [...this.tracks]; }
   isBinauralOn() { return this.binaural; }
+  beatKind() { return this.binaural ? ('binaural' as const) : null; }
   fadeIn() {}
   async fadeOut() {}
   async stopAll() { this.tracks.clear(); this.binaural = false; }

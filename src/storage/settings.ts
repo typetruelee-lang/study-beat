@@ -1,5 +1,6 @@
 import { DEFAULT_TRACKS } from '../sounds/catalog';
 import type { UseCase } from '../sounds/types';
+import type { BeatKind } from '../audio/types';
 import { readJson, type KeyValueStore } from './KeyValueStore';
 
 export type TimerKind = 'countdown' | 'countup' | 'goal';
@@ -46,6 +47,21 @@ export interface Settings {
   headphoneTipDismissed: boolean;
   /** Stop decorative animations (battery / motion sensitivity). */
   reduceMotion: boolean;
+  /** Binaural (headphones) or isochronic (works on speakers). */
+  beatKind: BeatKind;
+  /** Saved mixes ("내 믹스"). */
+  favorites: FavoriteMix[];
+}
+
+export interface FavoriteMix {
+  id: string;
+  name: string;
+  mode: UseCase;
+  beat: number;
+  binauralOn: boolean;
+  tracks: TrackSetting[];
+  intensity: number;
+  createdAt: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -71,6 +87,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoFrequency: false,
   headphoneTipDismissed: false,
   reduceMotion: false,
+  beatKind: 'binaural',
+  favorites: [],
 };
 
 const KEY = 'focusclay.settings.v1';

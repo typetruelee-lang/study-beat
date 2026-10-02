@@ -9,6 +9,7 @@ import { ChipGroup } from '../common/Chip';
 import { ScreenHeader } from '../common/ScreenHeader';
 import { ScreenControlsButton } from '../Screen/ScreenControls';
 import { SoundPicks } from '../SoundLibrary/SoundPicks';
+import { RecipeRow } from '../Recipes/RecipeRow';
 import '../Focus/focus.css';
 
 /** Shared layout for the Sleep and Relax screens: scene, timer choice, sounds, one big play button. */
@@ -68,7 +69,9 @@ export function AmbientMode({
       )}
 
       <section className="stack-s" aria-label="사운드">
-        <h2 className="h2">사운드</h2>
+        <h2 className="h2">추천 사운드</h2>
+        <RecipeRow mode={mode} label={`추천 ${title} 사운드`} />
+        <h2 className="h2">배경음</h2>
         <SoundPicks mode={mode} />
         <div className="link-row">
           <ClayButton onClick={() => navigate('/binaural')}>

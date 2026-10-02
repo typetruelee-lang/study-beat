@@ -16,10 +16,11 @@
  */
 import type { SoundMeta } from '../sounds/types';
 import { BinauralBeat } from './binaural/BinauralBeat';
+import { IsochronicTone } from './binaural/IsochronicTone';
 import { createCarve, setCarve } from './carve';
 import { playChime } from './chime';
 import { rampTo, sliderToGain } from './ramp';
-import type { AudioPort, BinauralParams, Bus } from './types';
+import type { AudioPort, BeatKind, BinauralParams, Bus } from './types';
 
 export interface TrackSource {
   stop(fadeSeconds: number): void;
@@ -47,7 +48,8 @@ export class WebAudioEngine implements AudioPort {
   private analyser!: AnalyserNode;
   private carve!: BiquadFilterNode;
   private carrier = 400;
-  private binaural: BinauralBeat | null = null;
+  private binaural: BinauralBeat | IsochronicTone | null = null;
+  private kind: BeatKind = 'binaural';
   private tracks = new Map<string, Track>();
   private busLevels: Record<Bus, number> = { binaural: 0.35, ambient: 0.8, noise: 0.6 };
   private masterLevel = 0.6;
@@ -197,10 +199,12 @@ export class WebAudioEngine implements AudioPort {
     if (this.streamReady) await this.mediaEl?.play().catch(() => {});
   }
 
-  startBinauralBeat({ beat, carrier }: BinauralParams) {
+  startBinauralBeat({ beat, carrier, kind = 'binaural' }: BinauralParams) {
     const ctx = this.ensure();
     this.binaural?.stop(1);
-    this.binaural = new BinauralBeat(ctx, this.buses.binaural, { beat, carrier, fadeIn: 2.5 });
+    const Beat = kind === 'isochronic' ? IsochronicTone : BinauralBeat;
+    this.binaural = new Beat(ctx, this.buses.binaural, { beat, carrier, fadeIn: 2.5 });
+    this.kind = kind;
     this.carrier = carrier;
     setCarve(this.carve, ctx, true, carrier);
   }
@@ -213,6 +217,10 @@ export class WebAudioEngine implements AudioPort {
 
   isBinauralOn() {
     return this.binaural !== null;
+  }
+
+  beatKind() {
+    return this.binaural ? this.kind : null;
   }
 
   setBeatFrequency(hz: number, rampSeconds = 2) {
