@@ -10,6 +10,7 @@ import { ScreenControlsButton } from '../Screen/ScreenControls';
 import { Sheet } from '../common/Sheet';
 import { StudyScene } from '../scenes/StudyScene';
 import { Waveform } from '../AudioPlayer/Waveform';
+import { FocusSoundOptions } from './FocusOptions';
 import './focus.css';
 
 /** Minimal in-session screen: time, state, and only 일시정지 / 종료 (spec 49). */
@@ -22,6 +23,7 @@ export function FocusSession() {
   const master = useAppState((s) => s.settings.masterVolume);
   const main = useMainSound();
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [soundOpen, setSoundOpen] = useState(false);
 
   useEffect(() => {
     if (!session || session.mode !== 'focus') navigate(lastResult ? '/focus/result' : '/', { replace: true });
@@ -48,7 +50,16 @@ export function FocusSession() {
         {main && <span>{main.emoji} {main.name}</span>}
         {binauralOn && <span>🎧 집중 사운드 {beat}Hz</span>}
         <span>🔊 {Math.round(master * 100)}%</span>
+        <ClayButton variant="ghost" onClick={() => setSoundOpen(true)}>🎚 소리 바꾸기</ClayButton>
       </div>
+
+      <Sheet open={soundOpen} onClose={() => setSoundOpen(false)} label="소리 바꾸기">
+        <div className="stack">
+          <p className="h2">소리 바꾸기</p>
+          <p className="small muted">바꾼 소리는 바로 적용되고 다음 집중에도 그대로 쓰여요. 집중 기록은 계속돼요.</p>
+          <FocusSoundOptions />
+        </div>
+      </Sheet>
 
       <p className="center small faint">다른 앱을 사용하지 않고 집중을 계속해보세요.</p>
 

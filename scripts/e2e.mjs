@@ -137,16 +137,9 @@ check('interrupted session recovered after reload (~5 min kept)', recovered.mode
 check('settings persist across reload (count-up kept)', s.settings.focusTimer.kind === 'countup');
 
 // ── auto frequency: 8 Hz at start → base → base+2 → base
-await page.evaluate(() => {
-  const k = 'focusclay.settings.v1';
-  const st = JSON.parse(localStorage.getItem(k));
-  st.focusTimer = { ...st.focusTimer, kind: 'countdown', seconds: 1000, routineId: null };
-  st.autoFrequency = true;
-  localStorage.setItem(k, JSON.stringify(st));
-});
+await page.evaluate(() => window.__fc.updateSettings((st) => ({ focusTimer: { ...st.focusTimer, kind: 'countdown', seconds: 1000, routineId: null }, autoFrequency: true })));
 await page.goto('http://localhost:4182/#/focus/ready');
-await page.reload();
-await page.clock.runFor(1200);
+await page.clock.runFor(600);
 await page.getByRole('button', { name: '집중 시작', exact: true }).click();
 await page.clock.runFor(1000);
 const beats = [(await state()).player.beat];
@@ -228,8 +221,16 @@ await page.goto('http://localhost:4182/#/focus/ready');
 await page.clock.runFor(300);
 await page.getByRole('button', { name: '집중 시작', exact: true }).click();
 await page.clock.runFor(1500);
-check('output goes through the media element (screen-off playback route)', (await page.evaluate(() => window.__fc.audio().outputRoute)) === 'stream');
-check('media element is playing a live audio stream', await page.evaluate(() => { const el = window.__fc.audio().mediaEl; return !!el && !el.paused && el.srcObject.getAudioTracks()[0]?.readyState === 'live'; }));
+check('while the app is visible, output goes straight to the speakers (most stable path)', (await page.evaluate(() => window.__fc.audio().outputRoute)) === 'direct');
+check('media element is prepared and playing for screen-off playback', await page.evaluate(() => { const a = window.__fc.audio(); const el = a.mediaEl; return a.backgroundReady && !!el && !el.paused && el.srcObject.getAudioTracks()[0]?.readyState === 'live'; }));
+await setVisible(false);
+await page.clock.runFor(300);
+check('screen off / app hidden: output moves onto the media element', (await page.evaluate(() => window.__fc.audio().outputRoute)) === 'stream');
+await setVisible(true);
+await page.clock.runFor(600);
+check('back in the app: output returns to direct', (await page.evaluate(() => window.__fc.audio().outputRoute)) === 'direct');
+await page.getByRole('button', { name: '집중 계속하기' }).click();
+await page.clock.runFor(300);
 await page.getByRole('button', { name: '화면 설정' }).click();
 await page.getByRole('slider', { name: '화면 밝기' }).fill('0.5');
 await page.clock.runFor(300);
@@ -254,6 +255,46 @@ await page.clock.fastForward('01:05');
 await page.clock.runFor(600);
 check('auto black screen after 1 idle minute', await page.locator('.curtain').isVisible());
 await page.locator('.curtain').dblclick();
+await page.getByRole('button', { name: '■ 종료' }).click();
+await page.getByRole('button', { name: '종료하고 기록하기' }).click();
+await page.clock.runFor(2000);
+
+// ── ready screen from the home goal card: options, and every choice is saved
+await page.goto('http://localhost:4182/#/');
+await page.clock.runFor(400);
+await page.locator('.goal-card').getByRole('button', { name: /집중하기/ }).click();
+await page.clock.runFor(300);
+await page.getByRole('radio', { name: '50분' }).click();
+await page.getByRole('button', { name: /카페/ }).click();
+await page.getByRole('button', { name: /켜짐 · \d+Hz/ }).click(); // focus sound off
+await page.clock.runFor(300);
+const readyText = await page.locator('.ready').innerText();
+check('ready screen: time, background sound and focus sound can be changed there', readyText.includes('50분 집중') && readyText.includes('카페') && !readyText.includes('집중 사운드'), readyText);
+await page.getByRole('button', { name: /소리 섞기/ }).click();
+await page.clock.runFor(300);
+await page.getByRole('slider', { name: '전체 볼륨' }).fill('0.4');
+await page.getByRole('button', { name: '뒤로 가기' }).click();
+await page.clock.runFor(300);
+check('mixer → back returns to the ready screen', (await page.evaluate(() => location.hash)) === '#/focus/ready');
+await page.reload();
+await page.clock.runFor(1500);
+s = await state();
+check(
+  'choices are saved and restored after reopening (50 min, 카페, focus sound off, volume 40%)',
+  s.settings.focusTimer.seconds === 3000 && s.settings.tracksByMode.focus[0].id === 'cafe_01' && s.settings.binauralOnByMode.focus === false && s.settings.masterVolume === 0.4,
+  { timer: s.settings.focusTimer, tracks: s.settings.tracksByMode.focus, binaural: s.settings.binauralOnByMode, master: s.settings.masterVolume },
+);
+check('restored choices show on the ready screen', (await page.locator('.ready').innerText()).includes('50분 집중'));
+await page.getByRole('button', { name: '집중 시작', exact: true }).click();
+await page.clock.runFor(1200);
+s = await state();
+check('session starts with the chosen options', s.session?.phases[0].seconds === 3000 && s.player.tracks[0].id === 'cafe_01' && !s.player.binauralOn, { phases: s.session?.phases, tracks: s.player.tracks, binaural: s.player.binauralOn });
+await page.getByRole('button', { name: /소리 바꾸기/ }).click();
+await page.getByRole('dialog', { name: '소리 바꾸기' }).getByRole('button', { name: /창가의 비/ }).click();
+await page.clock.runFor(600);
+s = await state();
+check('in-session sound change applies, is saved and recording continues', s.player.tracks[0].id === 'rain_01' && s.settings.tracksByMode.focus[0].id === 'rain_01' && s.session.status === 'running');
+await page.keyboard.press('Escape');
 await page.getByRole('button', { name: '■ 종료' }).click();
 await page.getByRole('button', { name: '종료하고 기록하기' }).click();
 await page.clock.runFor(2000);
