@@ -10,6 +10,8 @@ npm test             # 단위 테스트 (세션 상태머신, 통계, 노이즈,
 npm run test:audio   # Chromium OfflineAudioContext로 실제 오디오 그래프 검증
 npm run test:e2e     # Playwright + 가짜 시계로 핵심 루프 E2E
 npm run build        # dist/ + focus-clay.ait (앱인토스 번들)
+npm run build:site   # 웹사이트용: 앱 + 사운드 엔진(/engine/)
+npm run serve        # 위 빌드를 Node 서버로 제공 (http://localhost:8080)
 npm run perf         # 화면별 메인 스레드 사용량
 node scripts/build-preview.mjs  # 브라우저 미리보기용 단일 HTML
 ```
@@ -141,6 +143,50 @@ npm run deploy    # ait deploy — 콘솔 API 키 필요 (ait token add 로 등�
 4. 문서로 재확인: 검수 가이드(TDS 사용 요구 여부, 내비게이션 바 규칙, 카피·의료 표현 규정), `backEvent` 구독 시 기본 뒤로가기 동작,
    `webView` 옵션 의미, 오디오/백그라운드 관련 제약
 5. 녹음 음원을 쓸 경우 각 파일의 상업적 이용 가능 라이선스 확인 후 metadata 입력
+
+## 웹사이트로 서버에 올리기
+
+토스 밖에서도 일반 브라우저로 쓸 수 있다(토스 SDK는 토스 앱 안에서만 불러오고, 밖에서는 localStorage·Wake Lock 등 웹 기능으로 동작).
+
+```bash
+npm run build:site     # dist/ = 앱(/) + 사운드 엔진·데모(/engine/)
+npm run serve          # http://localhost:8080  (PORT, HOST 환경변수로 변경)
+npm run test:server    # 서버·앱·엔진 데모 자동 점검
+docker build -t focus-clay . && docker run -p 8080:8080 focus-clay
+```
+
+- `server/index.mjs`: 의존성 없는 Node 서버(node:http). 올바른 MIME, gzip, 해시 붙은 `assets/*`는 1년 캐시, HTML은 매번 재검증,
+  `dist/` 밖 경로 차단, `nosniff` 헤더. HTTPS는 앞단(Nginx, 클라우드 로드밸런서 등)에서 처리하는 것을 권장.
+- 정적 파일만 올려도 된다: `dist/` 폴더를 Nginx, S3·CloudFront, Vercel, Netlify, GitHub Pages 등 아무 곳에나 그대로 올리면 된다
+  (해시 라우팅·상대 경로라 하위 경로에 두어도 동작).
+- 소리는 브라우저 정책상 **사용자가 한 번 탭한 뒤**에만 나고, 집중 사운드는 헤드폰으로 들어야 한다.
+
+## 사운드 엔진만 다른 웹페이지에서 쓰기
+
+`npm run build:engine` → `dist/engine/focus-clay-engine.js`(약 33KB, gzip 11KB, 전역 `FocusClay`) ·
+`focus-clay-engine.mjs`(ES 모듈) · `index.html`(데모). 앱과 **같은 엔진 코드**(`src/audio`)를 쓴다.
+
+```html
+<script src="/engine/focus-clay-engine.js"></script>
+<script>
+  const fc = FocusClay.create();
+  fc.prewarm(['rain_01']); // 미리 생성해 두면 시작이 끊기지 않음
+  startButton.onclick = () => fc.play({ beat: 10, sounds: [{ id: 'rain_01', volume: 0.55 }], volume: 0.6 });
+</script>
+```
+
+| API | 설명 |
+|---|---|
+| `FocusClay.create()` | 플레이어 생성(페이지당 1개 권장) |
+| `play({ beat, carrier, sounds, volume, binauralVolume, ambientVolume, noiseVolume, fadeIn })` | 재생 또는 재생 중 설정 변경. **탭/클릭 안에서** 호출 |
+| `setBeat(hz, ramp)` · `setBinaural(hz \| null)` · `setCarrier(hz)` | 집중 사운드 주파수 변경(부드럽게 이동) · 켜기/끄기 · 기본 음 |
+| `addSound(id, vol)` · `removeSound(id)` · `setSounds([...])` · `setSoundVolume(id, vol)` | 배경음·노이즈 |
+| `setVolume(v)` · `setBusVolume('binaural'\|'ambient'\|'noise', v)` | 볼륨 |
+| `sleepTimer(sec, fade=20)` · `cancelSleepTimer()` · `stop(fade)` | 타이머(오디오 시계에 예약된 페이드) · 정지 |
+| `prewarm(ids)` · `state` · `analyser` · `destroy()` | 미리 생성 · 상태 · 파형용 AnalyserNode · 정리 |
+| `FocusClay.sounds` · `FocusClay.presets` · `FocusClay.carriers` | 소리 25종(라이선스 포함) · 프리셋 9개(대역 포함) · 400/440/500Hz |
+
+화면이 꺼지면 숨은 `<audio>` 출력으로 넘어가는 동작, 클릭 없는 램프, 음량 정규화가 모두 포함되어 있다.
 
 ## 경쟁 서비스 참고 메모
 
