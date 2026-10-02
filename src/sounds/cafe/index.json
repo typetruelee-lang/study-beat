@@ -9,7 +9,7 @@
       "focus"
     ],
     "loop": true,
-    "volume": 0.5,
+    "volume": 0.55,
     "source": "synth",
     "synth": "cafe",
     "thumb": "cafe",
@@ -29,7 +29,7 @@
       "focus"
     ],
     "loop": true,
-    "volume": 0.6,
+    "volume": 0.55,
     "source": "synth",
     "synth": "library",
     "thumb": "library",
@@ -71,7 +71,7 @@
       "sleep"
     ],
     "loop": true,
-    "volume": 0.5,
+    "volume": 0.55,
     "source": "synth",
     "synth": "cityNight",
     "thumb": "city",

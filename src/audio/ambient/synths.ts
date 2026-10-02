@@ -357,7 +357,7 @@ const RECIPES: Record<SynthId, Recipe> = {
     const s: Sources = [];
     const lp = filt(ctx, 'lowpass', 520);
     const g = loop(ctx, noiseBuffer(ctx, 'pink'), chain(lp, out), 0.3, s);
-    wander(ctx, g.gain, 'lake', 0.22, 0.5, s);
+    wander(ctx, g.gain, 'lake', 0.15, 0.7, s); // gentle lapping: ~9 dB swing
     loop(ctx, bubbles(ctx, 'lake', 4, 0.25), chain(filt(ctx, 'lowpass', 1800), out), 0.8, s);
     return s;
   },
@@ -478,8 +478,31 @@ const RECIPES: Record<SynthId, Recipe> = {
   },
 };
 
+/**
+ * Loudness normalisation. RAW_DB is each recipe's measured output (RMS, dBFS); every sound is
+ * brought to TARGET_DB so switching sounds keeps a similar level at the same slider position.
+ * Sparse/bright textures (birds, crickets), the forest bed and white noise sit a little lower because they are
+ * perceived as louder than their RMS suggests. `npm run test:audio` re-measures and fails when a
+ * recipe drifts more than 2.5 dB (single 16 s render; slow modulation varies ±2 dB) from its target — update RAW_DB after changing a recipe.
+ */
+const RAW_DB: Record<SynthId, number> = {
+  white: -14.0, pink: -14.0, brown: -14.0,
+  rain: -20.9, softRain: -21.2, windowRain: -20.5, thunder: -20.6,
+  waves: -18.2, slowWaves: -18.3, lake: -26.2,
+  wind: -22.0, mountainWind: -23.7,
+  forest: -30.2, birds: -30.6, nightForest: -28.1,
+  stream: -23.5, fire: -17.7,
+  cafe: -23.2, library: -23.6, train: -17.1, cityNight: -17.6,
+  fan: -17.8, deepRumble: -12.9,
+  calmPad: -22.6, lullaby: -23.7,
+};
+export const TARGET_DB = (id: SynthId): number =>
+  id === 'birds' || id === 'nightForest' ? -19 : id === 'white' ? -18 : id === 'forest' ? -17 : -16;
+
 export function startSynth(ctx: BaseAudioContext, id: SynthId, out: AudioNode): Sources {
-  return RECIPES[id](ctx, out);
+  const level = new GainNode(ctx, { gain: 10 ** ((TARGET_DB(id) - RAW_DB[id]) / 20) });
+  level.connect(out);
+  return RECIPES[id](ctx, level);
 }
 
 export const SYNTH_IDS = Object.keys(RECIPES) as SynthId[];

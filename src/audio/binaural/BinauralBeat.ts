@@ -37,11 +37,13 @@ export class BinauralBeat {
   }
 
   setBeat(beat: number, rampSeconds = 2) {
+    if (beat === this.beat) return; // keep any glide already in progress
     this.beat = beat;
     rampTo(this.right.frequency, rightEarFrequency(this.carrier, beat), rampSeconds, this.ctx);
   }
 
   setCarrier(carrier: number, rampSeconds = 2) {
+    if (carrier === this.carrier) return;
     this.carrier = carrier;
     rampTo(this.left.frequency, carrier, rampSeconds, this.ctx);
     rampTo(this.right.frequency, rightEarFrequency(carrier, this.beat), rampSeconds, this.ctx);

@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { endSessionEarly, pauseSession, resumeSession, selectMode, startSession } from '../../app/actions';
+import { endSessionEarly, pauseSession, prewarmMode, resumeSession, selectMode, startSession } from '../../app/actions';
 import { describeSession, useMixSummary } from '../../app/hooks';
 import { useAppState } from '../../app/store';
 import type { UseCase } from '../../sounds/types';
@@ -36,7 +36,10 @@ export function AmbientMode({
   const summary = useMixSummary();
   const mine = session?.mode === mode ? session : null;
   const other = session && session.mode !== mode ? session : null;
-  useEffect(() => selectMode(mode), [mode]);
+  useEffect(() => {
+    selectMode(mode);
+    prewarmMode(mode);
+  }, [mode]);
 
   const view = mine ? describeSession(mine) : null;
   const running = mine?.status === 'running';

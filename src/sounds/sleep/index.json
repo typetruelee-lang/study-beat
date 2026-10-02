@@ -49,7 +49,7 @@
       "sleep"
     ],
     "loop": true,
-    "volume": 0.5,
+    "volume": 0.55,
     "source": "synth",
     "synth": "nightForest",
     "thumb": "moon",
@@ -90,7 +90,7 @@
       "focus"
     ],
     "loop": true,
-    "volume": 0.45,
+    "volume": 0.55,
     "source": "synth",
     "synth": "fan",
     "thumb": "fan",
@@ -110,7 +110,7 @@
       "sleep"
     ],
     "loop": true,
-    "volume": 0.5,
+    "volume": 0.55,
     "source": "synth",
     "synth": "deepRumble",
     "thumb": "noise",
@@ -131,7 +131,7 @@
       "relax"
     ],
     "loop": true,
-    "volume": 0.4,
+    "volume": 0.55,
     "source": "synth",
     "synth": "lullaby",
     "thumb": "pad",

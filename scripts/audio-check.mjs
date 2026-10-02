@@ -88,11 +88,11 @@ const results = await page.evaluate(async () => {
     check(`carve: ${atCarrier.toFixed(1)} dB at 400 Hz, ${far.toFixed(1)} dB at 2 kHz`, atCarrier < -4.5 && atCarrier > -7.5 && Math.abs(far) < 1, { atCarrier, far });
   }
 
-  // 3) every procedural recipe renders sane levels (no NaN, no clipping, audible)
+  // 3) every procedural recipe: loudness at its normalised target, no NaN/clipping, cheap to build
   {
-    const { startSynth, SYNTH_IDS } = await import('/src/audio/ambient/synths.ts');
+    const { startSynth, SYNTH_IDS, TARGET_DB } = await import('/src/audio/ambient/synths.ts');
     for (const id of SYNTH_IDS) {
-      const ctx = new OfflineAudioContext(2, SR * 4, SR);
+      const ctx = new OfflineAudioContext(2, SR * 16, SR);
       const t0 = performance.now();
       startSynth(ctx, id, ctx.destination);
       const build = performance.now() - t0;
@@ -103,9 +103,116 @@ const results = await page.evaluate(async () => {
         if (Number.isNaN(L[i]) || Number.isNaN(R[i])) nan = true;
         peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
       }
-      const level = Math.max(rms(L, SR, 4 * SR), rms(R, SR, 4 * SR));
-      check(`synth ${id}: rms ${level.toFixed(3)} peak ${peak.toFixed(2)} build ${build.toFixed(0)}ms`, !nan && peak < 1.5 && level > 0.01 && level < 0.6 && build < 300, { nan, peak, level, build });
+      const db = 20 * Math.log10(Math.sqrt((rms(L, 2 * SR, L.length) ** 2 + rms(R, 2 * SR, R.length) ** 2) / 2));
+      const target = TARGET_DB(id);
+      check(`synth ${id}: ${db.toFixed(1)} dBFS (target ${target}) peak ${peak.toFixed(2)} build ${build.toFixed(0)}ms`, !nan && peak < 1.5 && Math.abs(db - target) <= 2.5 && build < 300, { nan, peak, db, build });
     }
+  }
+
+  // 3a) FULL ENGINE, every sound: real start sequence (track fade-in 2 s + master fade-in),
+  //     buses, carve, compressor. Checks: starts from silence, no dropouts, no clipping, sane level.
+  const { WebAudioEngine } = await import('/src/audio/AudioEngine.ts');
+  const { createTrack } = await import('/src/audio/ambient/createTrack.ts');
+  const { SOUNDS, DEFAULT_TRACKS } = await import('/src/sounds/catalog.ts');
+  const { TARGET_DB } = await import('/src/audio/ambient/synths.ts');
+  const renderEngine = async (seconds, setup) => {
+    const ctx = new OfflineAudioContext(2, SR * seconds, SR);
+    const e = new WebAudioEngine(createTrack, () => ctx);
+    await e.unlock();
+    setup(e);
+    e.fadeIn(2);
+    const buf = await ctx.startRendering();
+    return [buf.getChannelData(0), buf.getChannelData(1)];
+  };
+  const dropouts = (L, R, from) => {
+    let run = 0, n = 0;
+    for (let i = from; i < L.length; i++) {
+      if (Math.abs(L[i]) < 1e-5 && Math.abs(R[i]) < 1e-5) { run++; if (run === 240) n++; } else run = 0;
+    }
+    return n; // silent gaps ≥ 5 ms
+  };
+  const audit = (L, R) => {
+    let peak = 0, nan = false;
+    for (let i = 0; i < L.length; i++) { if (Number.isNaN(L[i]) || Number.isNaN(R[i])) nan = true; peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i])); }
+    const start = Math.max(rms(L, 0, 0.05 * SR), rms(R, 0, 0.05 * SR));
+    const steady = Math.max(rms(L, 3 * SR, L.length), rms(R, 3 * SR, R.length));
+    return { peak, nan, start, steady, gaps: dropouts(L, R, 2.5 * SR) };
+  };
+  {
+    const bad = [];
+    const levels = [];
+    for (const meta of SOUNDS) {
+      const [L, R] = await renderEngine(14, (e) => e.playTrack(meta, meta.volume));
+      const a = audit(L, R);
+      // Compare after removing each sound's intended offset (sparse/bright sounds sit lower on purpose).
+      const db = 20 * Math.log10(a.steady) - (TARGET_DB(meta.synth) + 16);
+      levels.push({ id: meta.id, bus: meta.bus, db });
+      const ok = !a.nan && a.peak < 1 && a.gaps === 0 && a.start < a.steady * 0.05 && db > -60;
+      if (!ok) bad.push({ id: meta.id, ...a });
+    }
+    check(`engine: all ${SOUNDS.length} sounds start from silence, no gaps, no clipping, audible`, bad.length === 0, bad);
+    // At default settings, sounds of the same kind play at a similar level.
+    for (const [bus, tol] of [['ambient', 4], ['noise', 3]]) {
+      const g = levels.filter((l) => l.bus === bus).sort((a, b) => a.db - b.db);
+      const med = g[Math.floor(g.length / 2)].db;
+      const off = g.filter((l) => Math.abs(l.db - med) > tol);
+      check(`engine: ${bus} sounds balanced at default volume (offset-corrected median ${med.toFixed(1)} dBFS, all within ±${tol} dB; range ${g[0].db.toFixed(1)}…${g.at(-1).db.toFixed(1)})`, off.length === 0, off);
+    }
+  }
+  for (const [mode, beat] of [['focus', 10], ['sleep', 2], ['relax', 6]]) {
+    const [L, R] = await renderEngine(10, (e) => {
+      e.startBinauralBeat({ beat, carrier: 400 });
+      for (const t of DEFAULT_TRACKS[mode]) e.playTrack(SOUNDS.find((x) => x.id === t.id), t.volume);
+    });
+    const a = audit(L, R);
+    const a0 = 6 * SR, a1 = 10 * SR; // 4 s window
+    const lTone = goertzel(L, a0, a1, 400), lSide = (goertzel(L, a0, a1, 395) + goertzel(L, a0, a1, 405)) / 2;
+    const rTone = goertzel(R, a0, a1, 400 + beat), rSide = (goertzel(R, a0, a1, 395 + beat) + goertzel(R, a0, a1, 405 + beat)) / 2;
+    check(`engine: ${mode} mix + ${beat} Hz beat — L 400 Hz ${ (lTone / lSide).toFixed(0) }× / R ${400 + beat} Hz ${(rTone / rSide).toFixed(0)}× above the bed, peak ${a.peak.toFixed(2)}, gaps ${a.gaps}`,
+      !a.nan && a.peak < 1 && a.gaps === 0 && a.start < a.steady * 0.05 && lTone > 3 * lSide && rTone > 3 * rSide, a);
+  }
+
+  // 3a') every generated buffer loops seamlessly (wrap step no larger than the buffer's own steps)
+  {
+    const { allSoundData } = await import('/src/audio/ambient/buffers.ts');
+    const bad = [];
+    for (const [key, d] of allSoundData()) {
+      for (const c of d.channels) {
+        let maxStep = 0, nan = false, peak = 0;
+        for (let i = 1; i < c.length; i++) { const st = Math.abs(c[i] - c[i - 1]); if (st > maxStep) maxStep = st; if (Number.isNaN(c[i])) nan = true; peak = Math.max(peak, Math.abs(c[i])); }
+        const seam = Math.abs(c[0] - c[c.length - 1]);
+        if (nan || seam > maxStep * 1.05 + 1e-6 || peak > 4) bad.push({ key, seam, maxStep, peak, nan });
+      }
+    }
+    check(`all ${allSoundData().length} generated buffers: seamless loop joins, no NaN`, bad.length === 0, bad);
+  }
+
+  // 3a'') every preset × every carrier: exact per-ear frequency, no crosstalk; switching is click-free
+  {
+    const { BEAT_PRESETS, CARRIER_OPTIONS } = await import('/src/app/beats.ts');
+    const bad = [];
+    for (const carrier of CARRIER_OPTIONS) for (const { hz } of BEAT_PRESETS) {
+      const ctx = new OfflineAudioContext(2, SR * 3, SR);
+      new BinauralBeat(ctx, ctx.destination, { carrier, beat: hz, fadeIn: 0.3 });
+      const buf = await ctx.startRendering();
+      const L = buf.getChannelData(0), R = buf.getChannelData(1);
+      const a = 1 * SR, b = 3 * SR; // 2 s → nulls every 0.5 Hz
+      const lOk = goertzel(L, a, b, carrier) > 20 * goertzel(L, a, b, carrier + hz);
+      const rOk = goertzel(R, a, b, carrier + hz) > 20 * goertzel(R, a, b, carrier);
+      if (!lOk || !rOk) bad.push({ carrier, hz });
+    }
+    check(`binaural: all ${BEAT_PRESETS.length} presets × ${CARRIER_OPTIONS.length} carriers exact per ear (≥ 26 dB separation)`, bad.length === 0, bad);
+    const jumps = [];
+    for (const [from, to] of [[10, 12], [2, 40], [40, 2], [8, 18]]) {
+      const ctx = new OfflineAudioContext(2, SR * 5, SR);
+      const bb = new BinauralBeat(ctx, ctx.destination, { carrier: 400, beat: from, fadeIn: 0.5 });
+      ctx.suspend(2).then(() => { bb.setBeat(to, 2); bb.setBeat(to); ctx.resume(); }); // second call is redundant: must not restart
+      const buf = await ctx.startRendering();
+      const limit = ((2 * Math.PI * 445 * 0.3) / SR) * 1.2;
+      const st = Math.max(maxStep(buf.getChannelData(0)), maxStep(buf.getChannelData(1)));
+      if (st > limit) jumps.push({ from, to, st, limit });
+    }
+    check('binaural: preset switches glide without clicks', jumps.length === 0, jumps);
   }
 
   // 3b) rain character: not boomy, not muffled, noise-like (no pitched pings), no audible loop

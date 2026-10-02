@@ -9,7 +9,7 @@
       "relax"
     ],
     "loop": true,
-    "volume": 0.4,
+    "volume": 0.55,
     "source": "synth",
     "synth": "calmPad",
     "thumb": "pad",
@@ -49,7 +49,7 @@
       "relax"
     ],
     "loop": true,
-    "volume": 0.45,
+    "volume": 0.55,
     "source": "synth",
     "synth": "mountainWind",
     "thumb": "wind",

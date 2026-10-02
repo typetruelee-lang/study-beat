@@ -13,8 +13,9 @@ configureServices(isInToss() ? new AitStorageKV() : new LocalStorageKV(), create
 
 if (import.meta.env.DEV) {
   // Read-only hook for scripts/e2e.mjs
-  void Promise.all([import('./app/store'), import('./app/services')]).then(
-    ([{ getState }, svc]) => ((window as unknown as { __fc: unknown }).__fc = { getState, audio: () => svc.services.audio }),
+  void Promise.all([import('./app/store'), import('./app/services'), import('./app/actions')]).then(
+    ([{ getState }, svc, actions]) =>
+      ((window as unknown as { __fc: unknown }).__fc = { getState, audio: () => svc.services.audio, updateSettings: actions.updateSettings }),
   );
 }
 

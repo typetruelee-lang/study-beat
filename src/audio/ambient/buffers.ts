@@ -1,48 +1,75 @@
 /**
- * Buffer builders for procedural sounds. Every buffer is generated once per AudioContext and
- * cached. Event buffers run at 24 kHz to halve CPU/memory (plenty for ambient content).
+ * Buffer builders for procedural sounds.
+ *
+ * Sample data is generated once per app (not per AudioContext) at fixed sample rates and kept
+ * in `dataCache`, so it can be prepared ahead of time (see prewarm.ts) — even before the first
+ * tap creates the AudioContext. Turning data into an AudioBuffer for a context is only a copy.
+ * Event buffers run at 24 kHz to halve CPU/memory (plenty for ambient content).
  */
 import { createRng } from '../../lib/rng';
 import { generateNoise, makeLoopable, type NoiseColor } from '../noise/generators';
 
-const cache = new WeakMap<BaseAudioContext, Map<string, AudioBuffer>>();
+export interface SoundData {
+  rate: number;
+  channels: Float32Array<ArrayBuffer>[];
+}
 
-function cached(ctx: BaseAudioContext, key: string, make: () => AudioBuffer): AudioBuffer {
-  let m = cache.get(ctx);
-  if (!m) cache.set(ctx, (m = new Map()));
+const dataCache = new Map<string, SoundData>();
+const bufferCache = new WeakMap<BaseAudioContext, Map<string, AudioBuffer>>();
+
+function data(key: string, make: () => SoundData): SoundData {
+  let d = dataCache.get(key);
+  if (!d) dataCache.set(key, (d = make()));
+  return d;
+}
+
+function toBuffer(ctx: BaseAudioContext, key: string, d: SoundData): AudioBuffer {
+  let m = bufferCache.get(ctx);
+  if (!m) bufferCache.set(ctx, (m = new Map()));
   let b = m.get(key);
-  if (!b) m.set(key, (b = make()));
+  if (!b) {
+    b = new AudioBuffer({ length: d.channels[0].length, numberOfChannels: d.channels.length, sampleRate: d.rate });
+    d.channels.forEach((c, i) => b!.copyToChannel(c, i));
+    m.set(key, b);
+  }
   return b;
 }
 
-/** Stereo, decorrelated, seamlessly looping noise (8 s). */
+/** Every generated buffer so far (for the audio checks: seams, NaN, peaks). */
+export function allSoundData(): [string, SoundData][] {
+  return [...dataCache.entries()];
+}
+
+export function hasSoundData(key: string): boolean {
+  return dataCache.has(key);
+}
+
+const NOISE_RATE = 48000;
+
+/** Stereo, decorrelated, seamlessly looping noise (8 s at 48 kHz). */
 export function noiseBuffer(ctx: BaseAudioContext, color: NoiseColor): AudioBuffer {
-  return cached(ctx, `noise-${color}`, () => {
-    const sr = ctx.sampleRate;
+  const key = `noise-${color}`;
+  return toBuffer(ctx, key, data(key, () => {
+    const sr = NOISE_RATE;
     const fade = Math.floor(sr * 0.25);
     const len = sr * 8 + fade;
-    const L = makeLoopable(generateNoise(color, len, 11), fade);
-    const R = makeLoopable(generateNoise(color, len, 23), fade);
-    const buf = ctx.createBuffer(2, L.length, sr);
-    buf.copyToChannel(L, 0);
-    buf.copyToChannel(R, 1);
-    return buf;
-  });
+    return {
+      rate: sr,
+      channels: [makeLoopable(generateNoise(color, len, 11), fade), makeLoopable(generateNoise(color, len, 23), fade)],
+    };
+  }));
 }
 
 export type Filler = (L: Float32Array, R: Float32Array, sr: number, rnd: () => number) => void;
 
 export function eventBuffer(ctx: BaseAudioContext, key: string, seconds: number, fill: Filler, sr = 24000): AudioBuffer {
-  return cached(ctx, key, () => {
+  return toBuffer(ctx, key, data(key, () => {
     const len = Math.floor(seconds * sr);
     const L = new Float32Array(len);
     const R = new Float32Array(len);
     fill(L, R, sr, createRng(hash(key)));
-    const buf = ctx.createBuffer(2, len, sr);
-    buf.copyToChannel(L, 0);
-    buf.copyToChannel(R, 1);
-    return buf;
-  });
+    return { rate: sr, channels: [L, R] };
+  }));
 }
 
 /**
@@ -50,12 +77,13 @@ export function eventBuffer(ctx: BaseAudioContext, key: string, seconds: number,
  * filter frequencies so textures breathe without an obvious periodic LFO.
  */
 export function smoothRandomBuffer(ctx: BaseAudioContext, key: string, seconds: number, changesPerSecond: number): AudioBuffer {
-  return cached(ctx, `smooth-${key}-${seconds}`, () => {
+  const k = `smooth-${key}-${seconds}`;
+  return toBuffer(ctx, k, data(k, () => {
     const sr = 8000;
     const fade = sr * 2;
     const len = Math.floor(seconds * sr) + fade;
     const rnd = createRng(hash(key));
-    const data = new Float32Array(len);
+    const out = new Float32Array(len);
     const step = Math.max(1, Math.floor(sr / changesPerSecond));
     let a = rnd() * 2 - 1;
     let b = rnd() * 2 - 1;
@@ -65,14 +93,11 @@ export function smoothRandomBuffer(ctx: BaseAudioContext, key: string, seconds: 
         a = b;
         b = rnd() * 2 - 1;
       }
-      const s = t * t * (3 - 2 * t); // smoothstep
-      data[i] = a + (b - a) * s;
+      const sm = t * t * (3 - 2 * t); // smoothstep
+      out[i] = a + (b - a) * sm;
     }
-    const loop = makeLoopable(data, fade);
-    const buf = ctx.createBuffer(1, loop.length, sr);
-    buf.copyToChannel(loop, 0);
-    return buf;
-  });
+    return { rate: sr, channels: [makeLoopable(out, fade)] };
+  }));
 }
 
 function hash(s: string): number {
@@ -175,11 +200,17 @@ export function chirp(sr: number, f0: number, f1: number, seconds: number, amp: 
 export function tone(sr: number, freq: number, seconds: number, amp: number, attack: number, release: number, harmonic = 0.25): Float32Array {
   const len = Math.floor(seconds * sr);
   const out = new Float32Array(len);
+  // Sine by rotation (two multiplies per sample instead of Math.sin): fast enough for 30 s pads.
   const w = (2 * Math.PI * freq) / sr;
+  const cw = Math.cos(w), sw = Math.sin(w);
+  let s1 = 0, c1 = 1;
+  const attackN = attack * sr, releaseN = release * sr;
   for (let i = 0; i < len; i++) {
-    const t = i / sr;
-    const env = Math.min(1, t / attack) * Math.min(1, (seconds - t) / release);
-    out[i] = amp * Math.max(0, env) * (Math.sin(w * i) + harmonic * Math.sin(2 * w * i));
+    const env = Math.max(0, Math.min(1, i / attackN, (len - i) / releaseN));
+    out[i] = amp * env * (s1 + harmonic * 2 * s1 * c1); // sin(2x) = 2 sin x cos x
+    const ns = s1 * cw + c1 * sw;
+    c1 = c1 * cw - s1 * sw;
+    s1 = ns;
   }
   return out;
 }

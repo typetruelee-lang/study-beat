@@ -10,7 +10,7 @@
       "sleep"
     ],
     "loop": true,
-    "volume": 0.6,
+    "volume": 0.55,
     "source": "synth",
     "synth": "rain",
     "thumb": "rain",
@@ -74,7 +74,7 @@
       "sleep"
     ],
     "loop": true,
-    "volume": 0.5,
+    "volume": 0.55,
     "source": "synth",
     "synth": "wind",
     "thumb": "wind",
@@ -95,7 +95,7 @@
       "relax"
     ],
     "loop": true,
-    "volume": 0.45,
+    "volume": 0.55,
     "source": "synth",
     "synth": "birds",
     "thumb": "birds",
@@ -116,7 +116,7 @@
       "relax"
     ],
     "loop": true,
-    "volume": 0.5,
+    "volume": 0.55,
     "source": "synth",
     "synth": "stream",
     "thumb": "stream",
@@ -137,7 +137,7 @@
       "sleep"
     ],
     "loop": true,
-    "volume": 0.6,
+    "volume": 0.55,
     "source": "synth",
     "synth": "fire",
     "thumb": "fire",

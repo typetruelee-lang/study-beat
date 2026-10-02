@@ -2,7 +2,8 @@
  * App actions: the only place that coordinates store ⇄ audio engine ⇄ repositories.
  * Screens call these; they never talk to the audio engine directly.
  */
-import { getSound } from '../sounds/catalog';
+import { getSound, QUICK_PICKS } from '../sounds/catalog';
+import { holdPrewarm, prewarmSounds } from '../audio/prewarm';
 import type { UseCase } from '../sounds/types';
 import type { Bus } from '../audio/types';
 import { createId } from '../lib/id';
@@ -50,6 +51,9 @@ export async function initApp() {
   setState({ ready: true, settings, sessions, routines, player: playerFor(settings, settings.lastMode) });
   await recoverInterruptedSession();
   services.audio.setBackgroundOutput(settings.backgroundPlayback);
+  // Prepare the last-used mix while the user looks at the home screen.
+  setTimeout(() => prewarmMode(settings.lastMode), 600);
+  window.addEventListener('pagehide', flushSettings);
   visibilityOff?.();
   visibilityOff = onVisibilityChange(handleVisibility);
   mediaOff?.();
@@ -119,6 +123,12 @@ async function recoverInterruptedSession() {
   await saveRecord(toRecord(ended));
 }
 
+/** Queue the saved mix and quick picks of a mode for background generation. */
+export function prewarmMode(mode: UseCase) {
+  const { settings } = getState();
+  prewarmSounds([...settings.tracksByMode[mode].map((t) => t.id), ...QUICK_PICKS[mode]]);
+}
+
 // ─── settings ────────────────────────────────────────────────────────────────
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -128,7 +138,14 @@ export function updateSettings(patch: Partial<Settings> | ((s: Settings) => Part
   const next = { ...current, ...(typeof patch === 'function' ? patch(current) : patch) };
   setState({ settings: next });
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => void services.settings.save(getState().settings), 250);
+  saveTimer = setTimeout(flushSettings, 250);
+}
+
+/** Save now (also when the app is hidden or closed, so the last change is never lost). */
+export function flushSettings() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = null;
+  void services.settings.save(getState().settings);
 }
 
 export async function saveRoutines(routines: Routine[]) {
@@ -181,6 +198,7 @@ function syncAudio() {
 }
 
 export async function play() {
+  holdPrewarm(4000);
   await services.audio.unlock();
   const alreadyPlaying = getState().player.playing;
   setState((s) => ({ player: { ...s.player, playing: true } }));
@@ -457,7 +475,9 @@ async function finishSession() {
 
 function handleVisibility(visible: boolean) {
   const { session, settings } = getState();
+  services.audio.setAppHidden(!visible);
   if (!visible) {
+    flushSettings();
     if (session?.mode === 'focus' && session.status === 'running' && settings.awayDetection) {
       void pauseSession('away');
     }

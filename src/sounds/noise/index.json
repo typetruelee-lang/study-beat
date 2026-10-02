@@ -9,7 +9,7 @@
       "focus"
     ],
     "loop": true,
-    "volume": 0.25,
+    "volume": 0.45,
     "source": "synth",
     "synth": "white",
     "thumb": "noise",
@@ -30,7 +30,7 @@
       "sleep"
     ],
     "loop": true,
-    "volume": 0.3,
+    "volume": 0.45,
     "source": "synth",
     "synth": "pink",
     "thumb": "noise",
@@ -51,7 +51,7 @@
       "sleep"
     ],
     "loop": true,
-    "volume": 0.35,
+    "volume": 0.45,
     "source": "synth",
     "synth": "brown",
     "thumb": "noise",

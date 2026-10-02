@@ -48,6 +48,8 @@ export interface AudioPort {
    * WebViews may keep playing with the screen off. Falls back to direct output if it cannot start.
    */
   setBackgroundOutput(enabled: boolean): void;
+  /** The app went to the background / came back (switches the output route). */
+  setAppHidden(hidden: boolean): void;
   /** Resume output if the OS suspended it while the app was hidden. */
   ensureRunning(): Promise<void>;
   /** For the small waveform visual; null when audio is not running. */
@@ -79,6 +81,7 @@ export class SilentAudioPort implements AudioPort {
   cancelScheduledFadeOut() {}
   playChime() {}
   setBackgroundOutput() {}
+  setAppHidden() {}
   async ensureRunning() {}
   getAnalyser() { return null; }
 }
