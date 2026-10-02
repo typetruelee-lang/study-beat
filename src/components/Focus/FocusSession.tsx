@@ -6,6 +6,7 @@ import { useAppState } from '../../app/store';
 import { formatDuration } from '../../lib/format';
 import { ClayButton } from '../common/ClayButton';
 import { ScreenHeader } from '../common/ScreenHeader';
+import { Ring } from '../common/Ring';
 import { ScreenControlsButton } from '../Screen/ScreenControls';
 import { Sheet } from '../common/Sheet';
 import { StudyScene } from '../scenes/StudyScene';
@@ -31,6 +32,8 @@ export function FocusSession() {
 
   if (!session || session.mode !== 'focus') return null;
   const view = describeSession(session);
+  const phase = session.phases[session.phaseIndex];
+  const ringValue = phase.seconds ? session.phaseElapsedMs / 1000 / phase.seconds : (session.phaseElapsedMs / 1000 / 3600) % 1;
   const running = session.status === 'running';
 
   return (
@@ -38,13 +41,15 @@ export function FocusSession() {
       {/* Leaving this screen keeps the session running; the mini player brings you back. */}
       <ScreenHeader title={view.isBreak ? '휴식 중' : '집중 중'} onBack={() => navigate('/')} right={<ScreenControlsButton mode="focus" />} />
       <div className="mode-hero mode-hero--small"><StudyScene id="focus-live" active={running} /></div>
-      <div className="stack-s" style={{ marginTop: 8 }}>
-        <p className="big-time big-time--xl" aria-live="off">{view.bigTime}</p>
-        <p className="session-status">{view.status}</p>
-        {view.sub && <p className="center muted">{view.sub}</p>}
-        {binauralOn && !view.isBreak && <p className="hz-line"><b>{beat} Hz</b></p>}
-        <Waveform playing={running} />
+      <div className="session-ring">
+        <Ring value={ringValue} size={248} stroke={9} label="이번 집중 진행률">
+          <p className="big-time" aria-live="off">{view.bigTime}</p>
+          <p className="session-status">{view.status}</p>
+          {binauralOn && !view.isBreak && <p className="hz-line"><b>{beat} Hz</b></p>}
+        </Ring>
       </div>
+      {view.sub && <p className="center muted">{view.sub}</p>}
+      <Waveform playing={running} />
 
       <div className="session-meta">
         {main && <span>{main.emoji} {main.name}</span>}

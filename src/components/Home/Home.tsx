@@ -6,7 +6,9 @@ import { useAppState } from '../../app/store';
 import { formatDuration } from '../../lib/format';
 import { ClayButton, IconButton } from '../common/ClayButton';
 import { clampGoal, GOAL_STEP, GoalSheet } from '../Settings/GoalSheet';
-import { ProgressBar } from '../common/ProgressBar';
+import { Ring } from '../common/Ring';
+import { RecipeRow } from '../Recipes/RecipeRow';
+import { AdSlot } from '../Ads/AdSlot';
 import { RelaxScene } from '../scenes/RelaxScene';
 import { SleepScene } from '../scenes/SleepScene';
 import { StudyScene } from '../scenes/StudyScene';
@@ -23,32 +25,51 @@ export function Home() {
   const focusMin = Math.round(timer.seconds / 60);
   const ctaLabel = timer.kind === 'countup' ? '집중 시작하기' : `${focusMin}분 집중하기`;
 
+  const weekday = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
+
   return (
-    <div className="screen stack">
+    <div className="screen stack home">
+      <div className="home-glow" aria-hidden="true" />
       <header className="home-header">
+        <p className="home-eyebrow">{weekday}</p>
         <h1 className="home-title">FOCUS CLAY</h1>
-        <p className="home-sub">좋은 소리로, 더 깊게 집중하세요.</p>
+        <p className="home-sub">공부할 때 틀어두는 집중 사운드</p>
       </header>
 
       <section className="card goal-card" aria-label="오늘 목표">
+        <div className="goal-card__top">
+          <Ring value={progress} size={112} stroke={10} label="오늘 목표 진행률">
+            <span className="goal-ring__pct tabular">{Math.min(999, Math.round(progress * 100))}%</span>
+            <span className="tiny muted">달성</span>
+          </Ring>
+          <div className="goal-card__stats">
+            <div className="goal-stat">
+              <span className="goal-stat__label">오늘 목표</span>
+              <span className="goal-stat__row">
+                <span className="goal-stat__value tabular">{formatDuration(goal)}</span>
+                <span className="row" style={{ gap: 4 }}>
+                  <IconButton flat aria-label={`목표 ${GOAL_STEP}분 줄이기`} onClick={() => nudgeGoal(-GOAL_STEP)}>－</IconButton>
+                  <IconButton flat aria-label={`목표 ${GOAL_STEP}분 늘리기`} onClick={() => nudgeGoal(GOAL_STEP)}>＋</IconButton>
+                </span>
+              </span>
+            </div>
+            <div className="goal-stat goal-card__nums">
+              <span className="goal-stat__label">완료</span>
+              <span className="goal-stat__value tabular">{formatDuration(today)}</span>
+              <span className="sr-only">/ {formatDuration(goal)}</span>
+            </div>
+            <div className="goal-stat">
+              <span className="goal-stat__label">남은 시간</span>
+              <span className="goal-stat__value tabular">{reached ? '달성 🎯' : formatDuration(remaining)}</span>
+            </div>
+          </div>
+        </div>
         <div className="row-between">
-          <span className="strong">오늘 목표</span>
+          <span className="small muted">{reached ? '오늘 목표를 채웠어요. 이어서 해도 좋아요.' : '한 번에 하나씩, 지금 시작해요.'}</span>
           <button type="button" className="cbtn cbtn--ghost" style={{ minHeight: 40, padding: '0 8px' }} onClick={() => setGoalOpen(true)}>
             목표 바꾸기
           </button>
         </div>
-        <div className="row-between">
-          <div className="goal-card__nums">
-            <span className="goal-card__now tabular">{formatDuration(today)}</span>
-            <span className="goal-card__goal">/ {formatDuration(goal)}</span>
-          </div>
-          <div className="row" style={{ gap: 6 }}>
-            <IconButton aria-label={`목표 ${GOAL_STEP}분 줄이기`} onClick={() => nudgeGoal(-GOAL_STEP)}>－</IconButton>
-            <IconButton aria-label={`목표 ${GOAL_STEP}분 늘리기`} onClick={() => nudgeGoal(GOAL_STEP)}>＋</IconButton>
-          </div>
-        </div>
-        <ProgressBar value={progress} label="오늘 목표 진행률" />
-        <p className="small muted">{reached ? '오늘 목표를 채웠어요 🌳 더 하고 싶다면 이어서 집중해요.' : `목표까지 ${formatDuration(remaining)} 남았어요`}</p>
         {session?.mode === 'focus' ? (
           <ClayButton variant="primary" size="lg" block onClick={() => navigate('/focus/session')}>
             집중 화면으로 돌아가기
@@ -58,6 +79,16 @@ export function Home() {
             ▶ {ctaLabel}
           </ClayButton>
         )}
+      </section>
+
+      <section className="stack-s" aria-label="추천 집중 사운드">
+        <div className="row-between">
+          <h2 className="h2">추천 집중 사운드</h2>
+          <button type="button" className="cbtn cbtn--ghost" style={{ minHeight: 40, padding: '0 8px' }} onClick={() => navigate('/library')}>
+            전체 ›
+          </button>
+        </div>
+        <RecipeRow mode="focus" go label="추천 집중 사운드" />
       </section>
 
       <GoalSheet open={goalOpen} onClose={() => setGoalOpen(false)} />
@@ -99,6 +130,7 @@ export function Home() {
           <span className="mode-card__go" aria-hidden="true">›</span>
         </div>
       </button>
+      <AdSlot place="home" />
     </div>
   );
 }

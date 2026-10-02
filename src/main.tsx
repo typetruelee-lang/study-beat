@@ -7,6 +7,9 @@ import { LocalStorageKV } from './storage/KeyValueStore';
 import { AitStorageKV } from './storage/AitStorageKV';
 import { isInToss } from './platform/toss';
 import './design/global.css';
+import { SKIN } from './app/skin';
+
+document.documentElement.classList.add(`skin-${SKIN}`);
 
 // Inside the Toss app use the SDK's native Storage; in a browser, localStorage.
 configureServices(isInToss() ? new AitStorageKV() : new LocalStorageKV(), createAudioEngine());

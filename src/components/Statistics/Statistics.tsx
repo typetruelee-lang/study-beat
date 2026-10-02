@@ -6,6 +6,7 @@ import { daySummary, favourites, focusTotals, growthStage, otherTotals, weekBars
 import { ProgressBar } from '../common/ProgressBar';
 import { GROWTH_LABELS, GrowthTree } from '../scenes/GrowthTree';
 import { WeekChart } from './WeekChart';
+import { AdSlot } from '../Ads/AdSlot';
 import './stats.css';
 
 export function Statistics() {
@@ -78,6 +79,7 @@ export function Statistics() {
         <div className="kv"><span className="muted">휴식·명상 시간</span><span className="strong">{formatDuration(other.relaxSeconds)}</span></div>
         <p className="tiny faint">수면·휴식 시간은 집중시간에 포함되지 않아요.</p>
       </section>
+      <AdSlot place="stats" />
     </div>
   );
 }

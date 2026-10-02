@@ -15,3 +15,8 @@
 .session-controls { display: flex; gap: 12px; }
 .session-controls > * { flex: 1; }
 .result-emoji { font-size: 44px; }
+
+.session-ring { display: flex; justify-content: center; margin-top: -40px; }
+.session-ring .ring { background: var(--surface-solid); border-radius: 50%; box-shadow: var(--clay); }
+.session-ring .big-time { font-size: 54px; }
+.session-ring .session-status { font-size: 16px; }

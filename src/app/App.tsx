@@ -22,6 +22,7 @@ import { DimOverlay } from '../components/Screen/DimOverlay';
 import { ScreenCurtain, useAutoCurtain } from '../components/Screen/ScreenCurtain';
 import { Splash } from './Splash';
 import { initApp } from './actions';
+import { IS_WEB_SKIN } from './skin';
 import { useAppState } from './store';
 
 // Hash routes in the WebView; in-memory routes for the web preview build (VITE_ROUTER=memory),
@@ -44,7 +45,8 @@ function Shell() {
     window.scrollTo(0, 0);
   }, [pathname]);
   useEffect(() => {
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#19223f' : '#f6efe6');
+    if (IS_WEB_SKIN) return; // the web skin is dark everywhere
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#19223f' : '#f5f2ee');
     document.body.style.background = dark ? '#19223f' : '';
   }, [dark]);
 

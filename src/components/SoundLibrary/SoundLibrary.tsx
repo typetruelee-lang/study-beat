@@ -7,6 +7,9 @@ import { CATEGORY_LABELS, type SoundCategory } from '../../sounds/types';
 import { ClayButton } from '../common/ClayButton';
 import { ChipGroup } from '../common/Chip';
 import { SoundThumb } from '../scenes/SoundThumb';
+import { FavoriteList } from '../Recipes/FavoriteList';
+import { RecipeRow } from '../Recipes/RecipeRow';
+import { AdSlot } from '../Ads/AdSlot';
 import './library.css';
 
 const MODE_LABEL = { focus: '집중', sleep: '수면', relax: '휴식' } as const;
@@ -32,6 +35,18 @@ export function SoundLibrary() {
         <h1 className="h1">사운드</h1>
         <p className="muted small">탭해서 {MODE_LABEL[mode]} 믹스에 넣거나 빼요. 최대 4개까지 섞을 수 있어요.</p>
       </header>
+      <section className="stack-s" aria-label="내 믹스">
+        <h2 className="h2">내 믹스</h2>
+        <FavoriteList />
+      </section>
+      <section className="stack-s" aria-label="추천 사운드">
+        <h2 className="h2">추천 · 집중</h2>
+        <RecipeRow mode="focus" go label="추천 집중 사운드" />
+        <h2 className="h2">추천 · 수면 · 휴식</h2>
+        <RecipeRow mode="sleep" go label="추천 수면 사운드" />
+        <RecipeRow mode="relax" go label="추천 휴식 사운드" />
+      </section>
+      <h2 className="h2">모든 소리</h2>
       <ChipGroup<Tab>
         label="카테고리"
         scroll
@@ -59,6 +74,7 @@ export function SoundLibrary() {
         ))}
       </div>
       <ClayButton block onClick={() => navigate('/mixer')}>🎚 볼륨 조절하기</ClayButton>
+      <AdSlot place="library" />
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import { IS_WEB_SKIN } from '../../app/skin';
+import { AuraArt } from './AuraArt';
 import { ClayDefs, Shadow, SceneFrame, fill } from './clay';
 import { Clayling, CLAYLING_PALETTE } from './Clayling';
 
@@ -18,6 +20,7 @@ const P = {
 
 /** 집중 / 공부 — clay character studying at a desk in a warm afternoon room. */
 export function StudyScene({ id = 'study', active = true }: { id?: string; active?: boolean }) {
+  if (IS_WEB_SKIN) return <AuraArt mode="focus" active={active} />;
   return (
     <SceneFrame label="책상에서 공부하는 클레이 캐릭터" active={active}>
       <svg viewBox="0 0 360 230" preserveAspectRatio="xMidYMid slice">

@@ -17,9 +17,10 @@
     "build:web": "tsc --noEmit && vite build",
     "deploy": "ait deploy",
     "build:engine": "vite build -c vite.engine.config.ts",
-    "build:site": "npm run build:web && npm run build:engine",
+    "build:site": "tsc --noEmit && vite build --mode web && npm run build:engine",
     "serve": "node server/index.mjs",
-    "test:server": "node scripts/server-check.mjs"
+    "test:server": "node scripts/server-check.mjs",
+    "dev:web": "vite --mode web"
   },
   "dependencies": {
     "@apps-in-toss/web-framework": "^3.6.0",

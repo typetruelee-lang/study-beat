@@ -1,7 +1,7 @@
 /* Buttons */
 .cbtn {
   appearance: none; border: 0; cursor: pointer;
-  min-height: var(--touch); padding: 0 22px;
+  min-height: var(--touch); padding: 0 22px; white-space: nowrap;
   border-radius: var(--radius-pill);
   font-size: var(--t-body); font-weight: 700;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -10,9 +10,9 @@
 }
 .cbtn:active { transform: translateY(1px) scale(0.98); box-shadow: var(--clay-pressed); }
 .cbtn:disabled { opacity: 0.45; cursor: default; }
-.cbtn--primary { background: var(--primary); color: var(--primary-ink); }
+.cbtn--primary { background: var(--btn-primary); color: var(--primary-ink); box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 35%, transparent); }
 .cbtn--primary:active { background: var(--primary-press); }
-.cbtn--ghost { background: transparent; box-shadow: none; color: var(--ink-soft); }
+.cbtn--ghost { background: transparent; box-shadow: none; color: var(--ink-soft); white-space: nowrap; }
 .cbtn--lg { min-height: 60px; font-size: 19px; padding: 0 28px; }
 .cbtn--block { width: 100%; }
 
@@ -95,7 +95,7 @@
 .sheet {
   position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 51;
   width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto;
-  background: var(--bg); color: var(--ink);
+  background: var(--surface-solid); color: var(--ink);
   border-radius: var(--radius-l) var(--radius-l) 0 0;
   padding: 12px var(--gutter) calc(24px + var(--safe-bottom));
   box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.2);
@@ -124,3 +124,8 @@
 
 .goal-steppers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .goal-stepper { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; border-radius: var(--radius-m); background: var(--surface-2); }
+
+.ring { position: relative; flex: none; }
+.ring svg { display: block; }
+.ring__center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+:root.skin-aura { --ring-a: #9c86ff; --ring-b: #4fb3ff; }

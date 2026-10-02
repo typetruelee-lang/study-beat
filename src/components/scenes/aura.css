@@ -1,0 +1,17 @@
+.scene.aura { background: #07080f; min-height: 100%; }
+.aura__bg { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 120%, rgba(255, 255, 255, 0.06), transparent 60%); }
+.aura__orb { position: absolute; width: 75%; aspect-ratio: 1; border-radius: 50%; filter: blur(8px); opacity: 0.8; mix-blend-mode: screen; will-change: transform; }
+.aura__orb--1 { left: -10%; top: -25%; animation: aura-a 18s ease-in-out infinite alternate; }
+.aura__orb--2 { right: -15%; top: 5%; animation: aura-b 22s ease-in-out infinite alternate; }
+.aura__orb--3 { left: 20%; bottom: -45%; animation: aura-c 26s ease-in-out infinite alternate; opacity: 0.55; }
+.aura__rings { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.aura__rings span {
+  position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35); animation: aura-ring 6s ease-out infinite; opacity: 0;
+}
+.aura__rings span:nth-child(2) { animation-delay: 2s; }
+.aura__rings span:nth-child(3) { animation-delay: 4s; }
+@keyframes aura-a { from { transform: translate(0, 0) scale(1); } to { transform: translate(18%, 12%) scale(1.15); } }
+@keyframes aura-b { from { transform: translate(0, 0) scale(1.05); } to { transform: translate(-20%, 10%) scale(0.9); } }
+@keyframes aura-c { from { transform: translate(0, 0); } to { transform: translate(-15%, -12%) scale(1.1); } }
+@keyframes aura-ring { 0% { transform: scale(0.4); opacity: 0.6; } 100% { transform: scale(2.4); opacity: 0; } }

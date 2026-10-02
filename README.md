@@ -10,7 +10,8 @@ npm test             # 단위 테스트 (세션 상태머신, 통계, 노이즈,
 npm run test:audio   # Chromium OfflineAudioContext로 실제 오디오 그래프 검증
 npm run test:e2e     # Playwright + 가짜 시계로 핵심 루프 E2E
 npm run build        # dist/ + focus-clay.ait (앱인토스 번들)
-npm run build:site   # 웹사이트용: 앱 + 사운드 엔진(/engine/)
+npm run build:site   # 웹사이트용(aura 다크 스킨 + 광고 자리): 앱 + 사운드 엔진(/engine/)
+npm run dev:web      # 웹 스킨으로 개발 서버
 npm run serve        # 위 빌드를 Node 서버로 제공 (http://localhost:8080)
 npm run perf         # 화면별 메인 스레드 사용량
 node scripts/build-preview.mjs  # 브라우저 미리보기용 단일 HTML
@@ -28,6 +29,27 @@ node scripts/build-preview.mjs  # 브라우저 미리보기용 단일 HTML
 | 5b | 자동 주파수 변화, 나의 루틴, 종료 방식 5종 | ✅ |
 | 6 | 애니메이션·렌더링 최적화 (측정 스크립트 포함) | ✅ (실기기 측정은 남음) |
 | 7 | 앱인토스 SDK 연동 (config, Storage·화면 켜짐·햅틱 어댑터, `.ait` 빌드) | ✅ (실기기·검수는 사용자 작업) |
+
+## 두 가지 스킨 (토스 / 웹)
+
+같은 코드에서 빌드 때 `VITE_SKIN`으로 화면 분위기만 바꾼다(`src/app/skin.ts`, `:root.skin-*` 토큰).
+
+| | 토스 미니앱 (`npm run build`) | 웹사이트 (`npm run build:site`) |
+|---|---|---|
+| 스킨 | `clay` — 밝은 웜톤, 얇은 테두리+부드러운 그림자, 정돈된 여백 | `aura` — 어두운 배경, 그라데이션 오브·빛 번짐, 그라데이션 버튼 |
+| 장면 | 클레이 일러스트 | 모드별 색의 오브 애니메이션(`AuraArt`) |
+| 광고 | 없음 | Google AdSense (홈·통계·라이브러리·결과 화면, **재생 화면에는 없음**) |
+| 설정 파일 | `.env` | `.env` + `.env.web` (제목·설명·테마색도 여기서) |
+
+Anima: Binaural Beats와의 기능 비교와 차용 결정은 [docs/anima-comparison.md](docs/anima-comparison.md).
+
+### 추천 사운드 · 강도 · 스피커용 · 내 믹스
+
+- **추천 사운드(레시피)** `src/sounds/recipes.ts`: 배경음 + 집중 사운드를 미리 묶은 11종(예: 카페 몰입 = 카페+핑크노이즈+12Hz). 한 탭으로 적용.
+- **강도**: 집중 사운드만 따로 줄이고 키우는 슬라이더(배경음 아래로 깔 수 있게).
+- **이어폰용 / 스피커용**: 이어폰용은 바이노럴 비트(좌우 다른 음), 스피커용은 아이소크로닉 톤(한 음을 규칙적으로 켜고 끔,
+  `IsochronicTone.ts`). 연구 대부분은 바이노럴 비트 대상이며 아이소크로닉 톤 근거는 더 적다 — 앱은 효과를 주장하지 않는다.
+- **내 믹스**: 믹서에서 지금 조합을 이름 붙여 저장(최대 12개), 라이브러리 "내 믹스"에서 다시 적용.
 
 ## 구조
 
@@ -161,6 +183,14 @@ docker build -t focus-clay . && docker run -p 8080:8080 focus-clay
   (해시 라우팅·상대 경로라 하위 경로에 두어도 동작).
 - 소리는 브라우저 정책상 **사용자가 한 번 탭한 뒤**에만 나고, 집중 사운드는 헤드폰으로 들어야 한다.
 
+### Google AdSense 붙이기 (웹판만)
+
+1. AdSense 승인 후 `.env.web`에 `VITE_ADSENSE_CLIENT=ca-pub-…`와 자리별 광고 단위 ID(`VITE_ADSENSE_SLOT_HOME/STATS/LIBRARY/RESULT`)를 채운다.
+   비어 있는 자리는 아무것도 그리지 않는다. 배치 확인용으로 `VITE_AD_PLACEHOLDER=1`이면 점선 자리 표시가 나온다.
+2. `public/ads.txt`(폴더가 없으면 만든다)에 `google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0`를 넣는다(빌드 시 사이트 루트로 복사됨).
+3. 광고 스크립트는 광고 자리가 처음 화면에 그려질 때 한 번만 불러온다(`src/components/Ads/AdSlot.tsx`). 토스판(`clay`)에서는 절대 렌더링되지 않는다.
+4. 정책: 재생·집중·수면 화면에는 광고를 두지 않고, 모든 광고에 "광고" 표시를 단다. 개인정보처리방침·쿠키 동의(EEA 등)는 배포 전 사용자 작업.
+
 ## 사운드 엔진만 다른 웹페이지에서 쓰기
 
 `npm run build:engine` → `dist/engine/focus-clay-engine.js`(약 33KB, gzip 11KB, 전역 `FocusClay`) ·
@@ -190,7 +220,7 @@ docker build -t focus-clay . && docker run -p 8080:8080 focus-clay
 
 ## 경쟁 서비스 참고 메모
 
-네트워크 제약으로 이번 세션에서는 웹 조사를 하지 못했고, 아래는 일반적으로 알려진 특징을 바탕으로 한 요약이다.
+Anima: Binaural Beats 상세 비교는 [docs/anima-comparison.md](docs/anima-comparison.md). 아래는 그 외 서비스의 일반적으로 알려진 특징 요약이다.
 기능·화면은 참고만 했고 그래픽·캐릭터는 모두 새로 만들었다.
 
 - **Brain.fm / Endel**: 모드(집중·휴식·수면) 선택 → 바로 재생. 과학 용어를 앞세움 → FOCUS CLAY는 "공부할 때 듣는 집중 사운드"로 쉽게 말하고 Hz는 보조 정보로.

@@ -1,20 +1,26 @@
-/* FOCUS CLAY design tokens — warm clay palette, soft 3D shadows, large type. */
+/*
+ * FOCUS CLAY design tokens — two skins:
+ *   clay (default, Toss mini-app): warm, calm, refined — flat surfaces with hairline borders and
+ *        soft shadows; the clay illustrations carry the character.
+ *   aura (web site, VITE_SKIN=aura): dark, premium "sound app" look with glowing gradient art.
+ */
 :root {
   --font: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Noto Sans KR', 'Segoe UI', sans-serif;
 
-  --bg: #f6efe6;
-  --surface: #fffaf4;
-  --surface-2: #f1e6d8;
-  --ink: #3b2f29;
-  --ink-soft: #6f6058;
-  --ink-faint: #8f8078;
-  --line: rgba(92, 64, 45, 0.12);
+  --bg: #f5f2ee;
+  --surface: #ffffff;
+  --surface-solid: #ffffff;
+  --surface-2: #f0ebe4;
+  --ink: #1f1b18;
+  --ink-soft: #5f5751;
+  --ink-faint: #8a827b;
+  --line: rgba(40, 28, 20, 0.09);
 
-  --primary: #e9794f;        /* clay apricot */
-  --primary-press: #d86a41;
+  --primary: #e2683f;        /* terracotta */
+  --primary-press: #cc5832;
   --primary-ink: #ffffff;
-  --primary-soft: #fde2d3;
-  --sage: #8fbf98;
+  --primary-soft: #fbe6dc;
+  --sage: #6faa82;
   --sage-soft: #dcecd9;
   --sky: #9cc7e4;
   --lavender: #b3a5de;
@@ -25,17 +31,17 @@
   --sleep-tint: #25325a;
   --relax-tint: #fcd9bd;
 
-  --radius-s: 14px;
-  --radius-m: 22px;
-  --radius-l: 30px;
+  --radius-s: 12px;
+  --radius-m: 18px;
+  --radius-l: 24px;
   --radius-pill: 999px;
 
-  /* Clay = outer soft drop + inner top highlight + inner bottom shade */
-  --clay: 0 10px 24px rgba(116, 76, 48, 0.16), 0 2px 4px rgba(116, 76, 48, 0.08),
-    inset 0 5px 10px rgba(255, 255, 255, 0.75), inset 0 -6px 12px rgba(116, 76, 48, 0.1);
-  --clay-sm: 0 5px 12px rgba(116, 76, 48, 0.14), inset 0 3px 6px rgba(255, 255, 255, 0.7),
-    inset 0 -4px 8px rgba(116, 76, 48, 0.08);
-  --clay-pressed: inset 0 4px 10px rgba(116, 76, 48, 0.18), inset 0 -2px 4px rgba(255, 255, 255, 0.6);
+  /* Surfaces: hairline ring + soft drop. Buttons keep a gentle clay highlight. */
+  --clay: 0 0 0 1px var(--line), 0 8px 24px rgba(40, 28, 20, 0.07);
+  --clay-sm: 0 0 0 1px var(--line), 0 2px 6px rgba(40, 28, 20, 0.05);
+  --clay-pressed: 0 0 0 1px var(--line), inset 0 2px 6px rgba(40, 28, 20, 0.12);
+  --btn-primary: linear-gradient(180deg, #ea7a52, #dc5f36);
+  --hero-glow: none;
 
   --touch: 48px;
   --gutter: 20px;
@@ -63,9 +69,36 @@
   --primary-press: #8c96e6;
   --primary-ink: #1c2344;
   --primary-soft: #36427a;
-  --clay: 0 10px 24px rgba(0, 0, 0, 0.35), inset 0 4px 10px rgba(255, 255, 255, 0.12),
-    inset 0 -6px 12px rgba(0, 0, 0, 0.25);
-  --clay-sm: 0 5px 12px rgba(0, 0, 0, 0.3), inset 0 3px 6px rgba(255, 255, 255, 0.1),
-    inset 0 -4px 8px rgba(0, 0, 0, 0.2);
-  --clay-pressed: inset 0 4px 10px rgba(0, 0, 0, 0.35);
+  --surface-solid: #25305a;
+  --line: rgba(220, 225, 255, 0.12);
+  --clay: 0 0 0 1px var(--line), 0 10px 28px rgba(0, 0, 0, 0.3);
+  --clay-sm: 0 0 0 1px var(--line), 0 3px 8px rgba(0, 0, 0, 0.2);
+  --clay-pressed: 0 0 0 1px var(--line), inset 0 2px 8px rgba(0, 0, 0, 0.35);
+  --btn-primary: linear-gradient(180deg, #aab3f5, #8d97ea);
 }
+
+/* ── aura skin (web) ───────────────────────────────────────────────────── */
+:root.skin-aura,
+:root.skin-aura .theme-sleep {
+  --bg: #07080f;
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-solid: #12141f;
+  --surface-2: rgba(255, 255, 255, 0.08);
+  --ink: #f2f3fa;
+  --ink-soft: #a6abc6;
+  --ink-faint: #7e84a3;
+  --line: rgba(255, 255, 255, 0.09);
+  --primary: #8f7bff;
+  --primary-press: #7c67f5;
+  --primary-ink: #ffffff;
+  --primary-soft: rgba(143, 123, 255, 0.18);
+  --sage: #5ed3a6;
+  --clay: 0 0 0 1px var(--line), 0 12px 32px rgba(0, 0, 0, 0.35);
+  --clay-sm: 0 0 0 1px var(--line);
+  --clay-pressed: 0 0 0 1px var(--line), inset 0 2px 8px rgba(0, 0, 0, 0.5);
+  --btn-primary: linear-gradient(135deg, #9c86ff 0%, #6f7cff 55%, #4fb3ff 100%);
+  --hero-glow: radial-gradient(60% 50% at 20% 0%, rgba(143, 123, 255, 0.35), transparent 70%),
+    radial-gradient(50% 40% at 90% 10%, rgba(79, 179, 255, 0.25), transparent 70%);
+  color-scheme: dark;
+}
+:root.skin-aura .theme-sleep { --primary: #6f8bff; --primary-press: #5f7bf0; }

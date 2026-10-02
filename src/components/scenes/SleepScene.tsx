@@ -1,3 +1,5 @@
+import { IS_WEB_SKIN } from '../../app/skin';
+import { AuraArt } from './AuraArt';
 import { ClayDefs, SceneFrame, fill } from './clay';
 import { Clayling, CLAYLING_PALETTE } from './Clayling';
 
@@ -18,6 +20,7 @@ const STARS = [
 
 /** 수면 — sleeping character under a blanket, clay moon, twinkling stars, a curled-up cat. */
 export function SleepScene({ id = 'sleep', active = true }: { id?: string; active?: boolean }) {
+  if (IS_WEB_SKIN) return <AuraArt mode="sleep" active={active} />;
   return (
     <SceneFrame label="침대에서 잠든 클레이 캐릭터와 고양이" active={active}>
       <svg viewBox="0 0 360 230" preserveAspectRatio="xMidYMid slice">

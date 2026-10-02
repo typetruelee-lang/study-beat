@@ -7,6 +7,7 @@ import { growthStage } from '../../storage/stats';
 import { ClayButton } from '../common/ClayButton';
 import { ScreenHeader } from '../common/ScreenHeader';
 import { GrowthTree } from '../scenes/GrowthTree';
+import { AdSlot } from '../Ads/AdSlot';
 import './focus.css';
 
 /** Session result (spec 50). Neutral wording — never framed as failure or judgement. */
@@ -81,6 +82,7 @@ export function FocusResult() {
         </ClayButton>
       </div>
       <ClayButton variant="ghost" onClick={goHome}>홈으로 가기</ClayButton>
+      <AdSlot place="result" />
     </div>
   );
 }
