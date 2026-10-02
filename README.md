@@ -1,4 +1,6 @@
-# FOCUS CLAY
+# 몰입각 (구 FOCUS CLAY)
+
+> **토스에 올리려면 → [docs/toss-launch-guide.md](docs/toss-launch-guide.md)** (단계별 따라 하기 가이드)
 
 공부·집중·수면을 위한 사운드 미니앱 (앱인토스 WebView 대상).
 "음악을 켜고 → 스마트폰을 덜 만지고 → 집중하고 → 기록된 집중시간이 쌓이는" 작은 공간.
@@ -9,7 +11,9 @@ npm run dev          # 개발 서버
 npm test             # 단위 테스트 (세션 상태머신, 통계, 노이즈, 카피/라이선스 가드)
 npm run test:audio   # Chromium OfflineAudioContext로 실제 오디오 그래프 검증
 npm run test:e2e     # Playwright + 가짜 시계로 핵심 루프 E2E
-npm run build        # dist/ + focus-clay.ait (앱인토스 번들)
+npm run build        # dist/ + molip-gak.ait (앱인토스 번들)
+npm run check:toss   # 앱인토스 제출 전 자동 점검 (✅/❌)
+npm run store-assets # 콘솔용 아이콘·썸네일·스크린샷 → store-assets/
 npm run build:site   # 웹사이트용(aura 다크 스킨 + 광고 자리): 앱 + 사운드 엔진(/engine/)
 npm run dev:web      # 웹 스킨으로 개발 서버
 npm run serve        # 위 빌드를 Node 서버로 제공 (http://localhost:8080)
@@ -129,11 +133,11 @@ src/
 **아래 "문서로 재확인" 항목은 출시 전에 공식 문서로 꼭 확인해야 한다.**
 
 ```bash
-npm run build     # tsc + vite build → dist/, 이어서 ait build → focus-clay.ait (로컬 패킹)
+npm run build     # tsc + vite build → dist/, 이어서 ait build → molip-gak.ait (로컬 패킹)
 npm run deploy    # ait deploy — 콘솔 API 키 필요 (ait token add 로 등록)
 ```
 
-- 설정: `apps-in-toss.config.ts` (v3 형식) — `appName: 'focus-clay'`, `brand.primaryColor: '#E9794F'`, `permissions: []`,
+- 설정: `apps-in-toss.config.ts` (v3 형식) — `appName: 'molip-gak'`, `brand.primaryColor: '#E2683F'`, `permissions: []`, `navigationBar`(토스 표준 바·뒤로가기),
   `webBundleDir: 'dist'`, `webView.allowsInlineMediaPlayback: true`.
 - 토스 앱 안인지 판별: 호스트가 넣어주는 `window.ReactNativeWebView` 유무 (`src/platform/toss.ts`).
   SDK는 토스 안에서만 동적으로 불러온다(별도 청크, 브라우저에서는 다운로드하지 않음).
@@ -153,18 +157,16 @@ npm run deploy    # ait deploy — 콘솔 API 키 필요 (ait token add 로 등�
   이어가려면 검은 화면 모드를 쓴다(앱이 앞에 있어 재생·기록 모두 유지, OLED는 검은 화소 전력이 거의 0).
 - 화면이 실제로 꺼진 뒤에도 소리가 계속 나는지는 토스 앱(WebView)의 백그라운드 정책에 달려 있어 **실기기 확인이 필요**하다.
   설정의 "화면 꺼져도 재생(실험적)"을 끄면 기존처럼 Web Audio 직접 출력으로 돌아간다.
-- TDS(`@toss/tds-mobile`)는 React ≤18을 요구하므로 React 18로 고정했다. 현재 UI는 자체 클레이 디자인이며 TDS는 적용하지 않았다.
+- **TDS**(`@toss/tds-mobile` + `@toss/tds-mobile-ait`): 비게임 WebView 검수 필수. 토스판(clay)에서만 `TDSMobileAITProvider`로 감싸고
+  버튼(`ClayButton`)·스위치(`ToggleRow`)·바텀시트(`Sheet`)를 TDS로 그린다(`src/components/common/*`에서 스킨별 분기). 웹판(aura)에는 TDS가 번들되지 않는다.
+- **검수 기준 반영**: 라이트 모드(토스판 수면 화면도 밝은 라벤더), 토스 안에서는 자체 ‹ 숨김(`ScreenHeader`), 홈에서 뒤로 → `closeView()`
+  (`platform/tossNavigation.ts`), 핀치 줌 금지(viewport·`touch-action`), 경로형 딥링크 `/focus`·`/sleep`·`/relax` → 해시 라우트(`platform/deeplink.ts`).
 - iOS는 무음 스위치가 켜져 있으면 Web Audio가 들리지 않을 수 있다.
 
-### 출시 전 체크리스트 (사용자 작업)
+### 출시 절차
 
-1. 앱인토스 콘솔에 앱 등록 — 앱 이름이 `apps-in-toss.config.ts`의 `appName`(`focus-clay`)과 일치하는지 확인
-2. `ait token add`로 API 키 등록 → `npm run deploy` → 샌드박스 앱에서 실기기 테스트
-3. 실기기 확인 항목: 첫 탭에서 소리 시작·페이드인, **화면 잠금 후 재생 지속(iOS·Android 각각)**, 잠금화면 재생 컨트롤, 검은 화면 모드, 헤드폰 좌우 분리, 화면 꺼짐/앱 전환 시 재생·이탈 감지 동작,
-   화면 켜짐 유지, 네이티브 뒤로가기 흐름(집중 세션에서 뒤로 → 세션 유지), 재실행 후 기록 유지, 햅틱
-4. 문서로 재확인: 검수 가이드(TDS 사용 요구 여부, 내비게이션 바 규칙, 카피·의료 표현 규정), `backEvent` 구독 시 기본 뒤로가기 동작,
-   `webView` 옵션 의미, 오디오/백그라운드 관련 제약
-5. 녹음 음원을 쓸 경우 각 파일의 상업적 이용 가능 라이선스 확인 후 metadata 입력
+**[docs/toss-launch-guide.md](docs/toss-launch-guide.md)** — 콘솔 가입부터 출시까지 단계별 체크리스트(실기기 점검표 포함).
+콘솔에 붙여 넣을 문구와 이미지는 [store-assets/](store-assets/console-text.md). 녹음 음원을 추가하면 각 파일의 상업적 이용 라이선스를 metadata에 입력.
 
 ## 웹사이트로 서버에 올리기
 
