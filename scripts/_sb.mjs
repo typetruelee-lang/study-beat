@@ -1,0 +1,13 @@
+import { chromium } from 'playwright-core';
+import { readFileSync, writeFileSync } from 'node:fs';
+const html = readFileSync('/tmp/claude-0/-home-user-study-beat/e6356b52-df78-596e-80b3-b206cb38f672/scratchpad/focus-clay.html','utf8');
+writeFileSync('/tmp/claude-0/-home-user-study-beat/e6356b52-df78-596e-80b3-b206cb38f672/scratchpad/sb.html', '<!doctype html><iframe id=f sandbox="allow-scripts" style="width:390px;height:844px"></iframe><script>document.getElementById("f").srcdoc = ' + JSON.stringify(html).replace(/<\/script/g,'<\\/script') + ';</script>');
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const p = await b.newPage();
+p.on('console', m => m.type()==='error' && console.log('console:', m.text().slice(0,300)));
+p.on('pageerror', e => console.log('pageerror:', String(e).slice(0,300)));
+await p.goto('file:///tmp/claude-0/-home-user-study-beat/e6356b52-df78-596e-80b3-b206cb38f672/scratchpad/sb.html');
+await p.waitForTimeout(3000);
+const f = p.frames()[1];
+console.log('text:', (await f.evaluate(() => document.body.innerText)).slice(0,120));
+await b.close();

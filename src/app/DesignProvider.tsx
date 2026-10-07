@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { TDSMobileAITProvider } from '@toss/tds-mobile-ait';
-import { IS_WEB_SKIN } from './skin';
+import { USE_TDS } from './skin';
 
 /** Toss build: TDS (required for non-game WebView mini-apps). Web build: plain (no TDS in the bundle). */
 export function DesignProvider({ children }: { children: ReactNode }) {
-  if (IS_WEB_SKIN) return <>{children}</>;
+  if (!USE_TDS) return <>{children}</>;
   return <TDSMobileAITProvider brandPrimaryColor={BRAND_PRIMARY}>{children}</TDSMobileAITProvider>;
 }
 

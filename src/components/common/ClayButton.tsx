@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react';
 import { Button as TdsButton, type ButtonProps as TdsButtonProps } from '@toss/tds-mobile';
-import { IS_WEB_SKIN } from '../../app/skin';
+import { USE_TDS } from '../../app/skin';
 import './common.css';
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -14,7 +14,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
  * text button. Web build: the skin's own button.
  */
 export function ClayButton({ variant = 'secondary', size = 'md', block, className = '', ...rest }: Props) {
-  if (!IS_WEB_SKIN && variant !== 'ghost') {
+  if (USE_TDS && variant !== 'ghost') {
     return (
       <TdsButton
         type="button"

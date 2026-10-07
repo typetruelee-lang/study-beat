@@ -12,15 +12,26 @@ import { applyDeepLink } from './platform/deeplink';
 import './design/global.css';
 import { SKIN } from './app/skin';
 
+/** Optional start-up steps must never keep the app from rendering. */
+const safely = (step: () => void) => {
+  try {
+    step();
+  } catch (e) {
+    console.warn('start-up step skipped', e);
+  }
+};
+
 document.documentElement.classList.add(`skin-${SKIN}`);
-applyDeepLink();
+safely(applyDeepLink);
 
 // Inside the Toss app use the SDK's native Storage; in a browser, localStorage.
 configureServices(isInToss() ? new AitStorageKV() : new LocalStorageKV(), createAudioEngine());
 
-setupTossNavigation(
-  () => ['', '#', '#/'].includes(location.hash),
-  () => history.back(),
+safely(() =>
+  setupTossNavigation(
+    () => ['', '#', '#/'].includes(location.hash),
+    () => history.back(),
+  ),
 );
 
 if (import.meta.env.DEV) {

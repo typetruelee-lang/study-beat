@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Switch as TdsSwitch } from '@toss/tds-mobile';
-import { IS_WEB_SKIN } from '../../app/skin';
+import { USE_TDS } from '../../app/skin';
 import './common.css';
 
 export function ToggleRow({ title, description, checked, onChange }: { title: string; description?: ReactNode; checked: boolean; onChange: (v: boolean) => void }) {
@@ -10,7 +10,7 @@ export function ToggleRow({ title, description, checked, onChange }: { title: st
         <span className="strong">{title}</span>
         {description && <span className="small muted">{description}</span>}
       </div>
-      {IS_WEB_SKIN ? (
+      {!USE_TDS ? (
         <button
           type="button"
           role="switch"
