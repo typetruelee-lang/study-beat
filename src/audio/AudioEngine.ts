@@ -65,6 +65,11 @@ export class WebAudioEngine implements AudioPort {
   private chimeUntil = 0;
   /** +1 on every start (unlock/fadeIn): a pending stop/suspend only acts if nothing started since. */
   private playGen = 0;
+  /** Sound is meant to be audible (fadeIn → true, fadeOut → false). */
+  private soundOn = false;
+  /** The OS paused the loop element while it was the output: fall back to live output. */
+  private bgBlocked = false;
+  private suspendRouteTimer: ReturnType<typeof setTimeout> | null = null;
   private directOut!: GainNode;
 
   // ── screen-off loop
@@ -184,6 +189,14 @@ export class WebAudioEngine implements AudioPort {
       for (const ev of ['pause', 'stalled', 'waiting', 'error', 'ended'] as const) {
         el.addEventListener(ev, () => this.log(`배경 음원: ${ev}`));
       }
+      // Paused by the system while it carries the sound → go back to the live output.
+      el.addEventListener('pause', () => {
+        if (this.route === 'background' && this.soundOn) {
+          this.bgBlocked = true;
+          this.applyRoute();
+        }
+      });
+      el.addEventListener('playing', () => (this.bgBlocked = false));
       this.bgEl = el;
     }
     // Muted while visible; starting it inside the tap lets it be unmuted later without one.
@@ -273,28 +286,56 @@ export class WebAudioEngine implements AudioPort {
 
   /** Mix is supposed to be audible (started and not faded/suspended). */
   private audible() {
-    return !!this.ctx && this.fader.gain.value > 0.001;
+    return !!this.ctx && this.soundOn;
   }
 
+  /**
+   * Exactly one copy of the mix is ever audible. While the loop file plays, the live graph is
+   * silenced and then suspended: two copies of the same tone on two slightly different clocks
+   * drift in and out of phase and the beat cancels itself every few minutes.
+   */
   private applyRoute() {
     const ctx = this.ctx;
     if (!ctx) return;
-    const useBg = this.backgroundOutput && this.hidden && this.hasLoop && !!this.bgEl && this.audible();
+    const useBg = this.backgroundOutput && this.hidden && this.hasLoop && !!this.bgEl && !this.bgBlocked && this.audible();
     const next = useBg ? 'background' : 'direct';
-    if (next !== this.route) this.log(`출력 경로: ${next === 'background' ? '배경 음원' : '직접'}`);
+    const changed = next !== this.route;
+    if (changed) this.log(`출력 경로: ${next === 'background' ? '배경 음원' : '직접'}`);
     this.route = next;
-    const t = ctx.currentTime;
-    this.directOut.gain.setTargetAtTime(useBg ? 0 : 1, t, 0.05);
+    if (this.suspendRouteTimer) clearTimeout(this.suspendRouteTimer);
+    this.suspendRouteTimer = null;
     const el = this.bgEl;
-    if (!el) return;
-    if (useBg) {
+    const t = ctx.currentTime;
+    if (useBg && el) {
       if (this.renderedVersion !== this.mixVersion) this.log('배경 음원이 최신 믹스보다 이전 버전');
+      this.directOut.gain.setTargetAtTime(0, t, 0.05);
       this.applyBgFade();
       el.muted = false;
       void this.playElement();
-    } else {
-      el.muted = true;
+      if (isLive(ctx)) {
+        // Live output faded out → stop the live graph entirely while the file plays.
+        this.suspendRouteTimer = setTimeout(() => {
+          if (this.route === 'background' && ctx.state === 'running') {
+            void ctx.suspend();
+            this.log('실시간 출력 쉬는 중 (배경 음원만 재생)');
+          }
+        }, 400);
+      }
+      return;
     }
+    if (el) el.muted = true;
+    if (!this.soundOn && ctx.state === 'suspended') {
+      // Stopped while the live graph was paused: never let its old level come back.
+      this.fader.gain.cancelScheduledValues(t);
+      this.fader.gain.setValueAtTime(0, t);
+    }
+    if (changed && isLive(ctx) && ctx.state === 'suspended' && this.soundOn) {
+      this.directOut.gain.cancelScheduledValues(t);
+      this.directOut.gain.setValueAtTime(0, t);
+      void ctx.resume().then(() => this.directOut.gain.setTargetAtTime(1, ctx.currentTime, 0.05));
+      return;
+    }
+    this.directOut.gain.setTargetAtTime(1, t, 0.05);
   }
 
   /** Mirror the scheduled sleep fade on the loop element while it is the output (JS timer). */
@@ -324,6 +365,7 @@ export class WebAudioEngine implements AudioPort {
   async ensureRunning() {
     const ctx = this.ctx;
     if (!ctx || !this.audible() || !isLive(ctx)) return;
+    if (this.route === 'background') return void (await this.playElement());
     if (ctx.state !== 'running') {
       this.log('오디오가 멈춰 있어 다시 시작');
       try {
@@ -462,6 +504,7 @@ export class WebAudioEngine implements AudioPort {
   fadeIn(seconds: number) {
     const ctx = this.ensure();
     this.playGen++;
+    this.soundOn = true;
     this.cancelPendingSuspend();
     rampTo(this.fader.gain, 1, seconds, ctx);
     if (isLive(ctx)) {
@@ -472,8 +515,9 @@ export class WebAudioEngine implements AudioPort {
 
   fadeOut(seconds: number): Promise<void> {
     if (!this.ctx) return Promise.resolve();
+    this.soundOn = false;
+    if (this.route === 'background') this.fadeElement(seconds); // the route switches after the fade
     rampTo(this.fader.gain, 0, seconds, this.ctx);
-    if (this.route === 'background') this.fadeElement(seconds);
     return new Promise((r) => setTimeout(r, seconds * 1000 + 50));
   }
 
@@ -561,7 +605,8 @@ export class WebAudioEngine implements AudioPort {
     this.cancelPendingSuspend();
     if (isLive(ctx)) void ctx.resume();
     // Bypasses the faders so it is heard even while the mix fades out.
-    this.chimeUntil = playChime(ctx, this.analyser, kind);
+    // While the loop file is the output the live mix is muted; the chime goes straight out.
+    this.chimeUntil = playChime(ctx, this.route === 'background' ? ctx.destination : this.analyser, kind);
     if (this.fader.gain.value < 0.001) this.suspendWhenIdle();
   }
 

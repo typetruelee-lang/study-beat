@@ -234,9 +234,13 @@ check('screen-off loop of the current mix is rendered and waits muted (a file, n
 await setVisible(false);
 await page.clock.runFor(300);
 check('screen off / app hidden: the loop file takes over (unmuted), live output fades out', await page.evaluate(() => { const a = window.__fc.audio(); return a.outputRoute === 'background' && !a.bgEl.muted && !a.bgEl.paused; }));
+await page.clock.runFor(600);
+await new Promise((r) => setTimeout(r, 200));
+check('only one copy plays: the live graph is paused while the loop file is the output', (await page.evaluate(() => window.__fc.audio().ctx.state)) === 'suspended');
 await setVisible(true);
 await page.clock.runFor(600);
-check('back in the app: output returns to direct', await page.evaluate(() => { const a = window.__fc.audio(); return a.outputRoute === 'direct' && a.bgEl.muted; }));
+await new Promise((r) => setTimeout(r, 200));
+check('back in the app: output returns to direct, live graph running, file muted', await page.evaluate(() => { const a = window.__fc.audio(); return a.outputRoute === 'direct' && a.bgEl.muted && a.ctx.state === 'running'; }));
 await page.getByRole('button', { name: '집중 계속하기' }).click();
 await page.clock.runFor(300);
 await page.getByRole('button', { name: '화면 설정' }).click();
