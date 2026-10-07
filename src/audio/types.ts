@@ -53,8 +53,8 @@ export interface AudioPort {
   cancelScheduledFadeOut(): void;
   playChime(kind: 'bell' | 'beep'): void;
   /**
-   * Play through a media element (MediaStream) instead of straight to the speakers, so mobile
-   * WebViews may keep playing with the screen off. Falls back to direct output if it cannot start.
+   * Screen-off playback: keep a rendered loop of the current mix ready in an ordinary <audio>
+   * element and hand the sound to it while the app is hidden (see backgroundTrack.ts).
    */
   setBackgroundOutput(enabled: boolean): void;
   /** The app went to the background / came back (switches the output route). */
@@ -63,6 +63,26 @@ export interface AudioPort {
   ensureRunning(): Promise<void>;
   /** For the small waveform visual; null when audio is not running. */
   getAnalyser(): AnalyserNode | null;
+  /** State and recent events for the 소리 진단 screen. */
+  diagnostics(): AudioDiagnostics;
+  /** Record that the app had to restore the sound (shown in diagnostics). */
+  noteRecovery(what: string): void;
+}
+
+export interface AudioDiagnostics {
+  route: 'direct' | 'background';
+  contextState: AudioContextState | 'none';
+  sampleRate: number;
+  backgroundOutput: boolean;
+  loopReady: boolean;
+  loopUpToDate: boolean;
+  loopPlaying: boolean;
+  lastRenderMs: number;
+  lastRenderAt: number;
+  beat: { hz: number; carrier: number; kind: BeatKind } | null;
+  tracks: string[];
+  recoveries: number;
+  events: { at: number; msg: string }[];
 }
 
 /** No-op engine (tests, or environments without Web Audio). */
@@ -94,4 +114,8 @@ export class SilentAudioPort implements AudioPort {
   setAppHidden() {}
   async ensureRunning() {}
   getAnalyser() { return null; }
+  diagnostics(): AudioDiagnostics {
+    return { route: 'direct', contextState: 'none', sampleRate: 0, backgroundOutput: false, loopReady: false, loopUpToDate: true, loopPlaying: false, lastRenderMs: 0, lastRenderAt: 0, beat: null, tracks: [...this.tracks], recoveries: 0, events: [] };
+  }
+  noteRecovery() {}
 }

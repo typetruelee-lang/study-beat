@@ -221,14 +221,22 @@ await page.goto('http://localhost:4182/#/focus/ready');
 await page.clock.runFor(300);
 await page.getByRole('button', { name: '집중 시작', exact: true }).click();
 await page.clock.runFor(1500);
+const waitLoop = async () => {
+  for (let i = 0; i < 80; i++) {
+    await page.clock.runFor(150);
+    await new Promise((r) => setTimeout(r, 100)); // offline render runs in real time
+    if (await page.evaluate(() => { const d = window.__fc.audio().diagnostics(); return d.loopReady && d.loopUpToDate; })) return true;
+  }
+  return false;
+};
 check('while the app is visible, output goes straight to the speakers (most stable path)', (await page.evaluate(() => window.__fc.audio().outputRoute)) === 'direct');
-check('media element is prepared and playing for screen-off playback', await page.evaluate(() => { const a = window.__fc.audio(); const el = a.mediaEl; return a.backgroundReady && !!el && !el.paused && el.srcObject.getAudioTracks()[0]?.readyState === 'live'; }));
+check('screen-off loop of the current mix is rendered and waits muted (a file, not a MediaStream)', (await waitLoop()) && (await page.evaluate(() => { const el = window.__fc.audio().bgEl; return !!el && !el.paused && el.muted && el.src.startsWith('blob:') && !el.srcObject; })));
 await setVisible(false);
 await page.clock.runFor(300);
-check('screen off / app hidden: output moves onto the media element', (await page.evaluate(() => window.__fc.audio().outputRoute)) === 'stream');
+check('screen off / app hidden: the loop file takes over (unmuted), live output fades out', await page.evaluate(() => { const a = window.__fc.audio(); return a.outputRoute === 'background' && !a.bgEl.muted && !a.bgEl.paused; }));
 await setVisible(true);
 await page.clock.runFor(600);
-check('back in the app: output returns to direct', (await page.evaluate(() => window.__fc.audio().outputRoute)) === 'direct');
+check('back in the app: output returns to direct', await page.evaluate(() => { const a = window.__fc.audio(); return a.outputRoute === 'direct' && a.bgEl.muted; }));
 await page.getByRole('button', { name: '집중 계속하기' }).click();
 await page.clock.runFor(300);
 await page.getByRole('button', { name: '화면 설정' }).click();
@@ -334,6 +342,51 @@ await page.getByRole('button', { name: /^⭐ 시험기간 카페/ }).click();
 await page.clock.runFor(400);
 s = await state();
 check('favorite mix is saved, survives reload and loads with one tap', s.settings.favorites.length === 1 && s.player.tracks[0].id === 'cafe_01' && (await page.evaluate(() => location.hash)) === '#/focus/ready', { fav: s.settings.favorites, tracks: s.player.tracks });
+
+// ── The beat holds until the set time, screen on or off (25 min focus, sped up with the fake clock)
+await page.evaluate(() => window.__fc.updateSettings((st) => ({ awayDetection: false, autoFrequency: false, focusTimer: { ...st.focusTimer, kind: 'countdown', seconds: 25 * 60, routineId: null } })));
+await page.goto('http://localhost:4182/#/focus/ready');
+await page.clock.runFor(400);
+await page.getByRole('button', { name: '집중 시작', exact: true }).click();
+await page.clock.runFor(1500);
+await waitLoop();
+const beatState = () => page.evaluate(() => { const a = window.__fc.audio(); const d = a.diagnostics(); return { on: a.isBinauralOn(), hz: d.beat?.hz, tracks: a.activeTrackIds().length, route: a.outputRoute }; });
+const seen = [];
+for (let m = 1; m <= 24; m++) {
+  if (m === 3) await setVisible(false); // screen off for 15 minutes
+  if (m === 18) await setVisible(true);
+  await page.clock.runFor(60_000);
+  seen.push(await beatState());
+}
+const lastMinute = seen.at(-1);
+check('25 min focus: beat stays on at 10 Hz with the sounds every minute (screen off 3–18 min)', seen.every((b) => b.on && b.hz === 10 && b.tracks > 0), seen.filter((b) => !b.on || b.hz !== 10));
+check('screen-off minutes play from the loop file, screen-on minutes from the live output', seen.slice(2, 17).every((b) => b.route === 'background') && lastMinute.route === 'direct', seen.map((b) => b.route));
+await page.clock.runFor(70_000);
+s = await state();
+check('at the set time the session ends and the loop element stops', !s.session && (await page.evaluate(() => window.__fc.audio().bgEl.paused)), { session: s.session?.status });
+
+// ── Stop, then start again right away (within the stop fade): nothing is torn down afterwards
+await page.goto('http://localhost:4182/#/mixer');
+await page.clock.runFor(400);
+await page.evaluate(() => window.__fc.play());
+await page.clock.runFor(2500);
+await page.evaluate(() => { void window.__fc.stopPlayback(); setTimeout(() => void window.__fc.play(), 300); });
+await page.clock.runFor(4000);
+check('stop then play within the fade: beat and sounds keep playing', await page.evaluate(() => { const a = window.__fc.audio(); return a.isBinauralOn() && a.activeTrackIds().length > 0 && window.__fc.getState().player.playing; }));
+await page.evaluate(() => window.__fc.stopPlayback());
+await page.clock.runFor(2000);
+
+// ── Watchdog: if the beat goes missing mid-session it comes back within ~2 s
+await page.evaluate(() => window.__fc.startSession('focus'));
+await page.clock.runFor(2000);
+await page.evaluate(() => window.__fc.audio().stopBinauralBeat(0.05));
+await page.clock.runFor(2600);
+check('watchdog restores a missing beat during a session', await page.evaluate(() => { const a = window.__fc.audio(); return a.isBinauralOn() && a.diagnostics().recoveries >= 1; }));
+await page.goto('http://localhost:4182/#/settings/audio');
+await page.clock.runFor(1200);
+check('소리 진단 screen shows the route and the recovery', (await page.getByText('직접 출력').count()) > 0 && (await page.getByText(/자동 복구: 비트/).count()) > 0);
+await page.evaluate(() => window.__fc.endSessionEarly());
+await page.clock.runFor(2000);
 
 // ── Apps in Toss review rules that a browser can check
 await page.goto('http://localhost:4182/#/sleep');

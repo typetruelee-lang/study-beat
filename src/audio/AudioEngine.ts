@@ -7,20 +7,22 @@
  *                   while the binaural beat is on)    → compressor → analyser → output
  *
  * Output: while the app is visible the mix goes straight to the context's destination (the
- * audio thread's own, most stable path). A hidden <audio> element fed by a MediaStream is started
- * inside the first tap and kept ready; only when the app is hidden (screen off / another app) does
- * the mix crossfade onto it, because mobile WebViews are more willing to keep media elements
- * playing in the background. It crossfades back when the app is visible again.
+ * audio thread's own, most stable path). For screen-off playback the same mix is also rendered
+ * offline into a 30 s seamless loop and played by an ordinary <audio> element (see
+ * backgroundTrack.ts for why a file and not a MediaStream). The element starts inside the first tap
+ * and keeps playing muted; when the app is hidden it is unmuted and the live output fades out, and
+ * the other way round when the app is visible again.
  *
  * Every gain/frequency change is ramped (see ramp.ts); sources always start from silence.
  */
 import type { SoundMeta } from '../sounds/types';
 import { BinauralBeat } from './binaural/BinauralBeat';
 import { IsochronicTone } from './binaural/IsochronicTone';
+import { buildLoop, encodeWav, LOOP_SECONDS, PREROLL_SECONDS, RENDER_RATE, silentWav, XFADE_SECONDS, type Stereo } from './backgroundTrack';
 import { createCarve, setCarve } from './carve';
 import { playChime } from './chime';
 import { rampTo, sliderToGain } from './ramp';
-import type { AudioPort, BeatKind, BinauralParams, Bus } from './types';
+import type { AudioDiagnostics, AudioPort, BeatKind, BinauralParams, Bus } from './types';
 
 export interface TrackSource {
   stop(fadeSeconds: number): void;
@@ -33,11 +35,16 @@ interface Track {
   gain: GainNode;
   source: TrackSource;
   volume: number;
+  meta: SoundMeta;
 }
 
 type Ctor = typeof AudioContext;
 /** Lets checks render the whole engine offline: `new WebAudioEngine(createTrack, () => new OfflineAudioContext(...))`. */
 export type ContextFactory = () => BaseAudioContext;
+
+/** Wait this long after the last mix change before rendering the screen-off loop. */
+const RENDER_DEBOUNCE_MS = 1000;
+const MAX_EVENTS = 40;
 
 export class WebAudioEngine implements AudioPort {
   private ctx: BaseAudioContext | null = null;
@@ -48,6 +55,7 @@ export class WebAudioEngine implements AudioPort {
   private analyser!: AnalyserNode;
   private carve!: BiquadFilterNode;
   private carrier = 400;
+  private beatHz = 10;
   private binaural: BinauralBeat | IsochronicTone | null = null;
   private kind: BeatKind = 'binaural';
   private tracks = new Map<string, Track>();
@@ -55,14 +63,27 @@ export class WebAudioEngine implements AudioPort {
   private masterLevel = 0.6;
   private suspendTimer: ReturnType<typeof setTimeout> | null = null;
   private chimeUntil = 0;
-  private backgroundOutput = true;
-  private route: 'direct' | 'stream' = 'direct';
-  private streamReady = false;
-  private hidden = false;
+  /** +1 on every start (unlock/fadeIn): a pending stop/suspend only acts if nothing started since. */
+  private playGen = 0;
   private directOut!: GainNode;
-  private streamOut: GainNode | null = null;
-  private streamDest: MediaStreamAudioDestinationNode | null = null;
-  private mediaEl: HTMLAudioElement | null = null;
+
+  // ── screen-off loop
+  private backgroundOutput = true;
+  private hidden = false;
+  private route: 'direct' | 'background' = 'direct';
+  private bgEl: HTMLAudioElement | null = null;
+  private bgUrl: string | null = null;
+  private mixVersion = 0;
+  private renderedVersion = -1;
+  private hasLoop = false;
+  private renderTimer: ReturnType<typeof setTimeout> | null = null;
+  private rendering = false;
+  private lastRenderMs = 0;
+  private lastRenderAt = 0;
+  private bgFade: { start: number; seconds: number } | null = null;
+  private bgFadeTimer: ReturnType<typeof setInterval> | null = null;
+  private events: { at: number; msg: string }[] = [];
+  private recoveries = 0;
 
   constructor(
     private trackFactory: TrackFactory | null = null,
@@ -104,14 +125,16 @@ export class WebAudioEngine implements AudioPort {
     this.buses.binaural.connect(this.master);
     this.buses.ambient.connect(this.carve);
     this.buses.noise.connect(this.carve);
+    if (isLive(ctx)) ctx.onstatechange = () => this.log(`오디오 상태: ${ctx.state}`);
     return ctx;
   }
 
   async unlock() {
     const ctx = this.ensure();
+    this.playGen++;
     this.cancelPendingSuspend();
-    // Start the output route synchronously inside the tap (media play() needs the gesture).
-    const routed = this.prepareStream();
+    // Start the screen-off element synchronously inside the tap (media play() needs the gesture).
+    this.startBackgroundElement();
     if (ctx.state !== 'running' && isLive(ctx)) {
       try {
         await ctx.resume();
@@ -123,57 +146,169 @@ export class WebAudioEngine implements AudioPort {
     const src = new AudioBufferSourceNode(ctx, { buffer: ctx.createBuffer(1, 1, ctx.sampleRate) });
     src.connect(ctx.destination);
     src.start();
-    await routed;
   }
+
+  // ─── screen-off loop ───────────────────────────────────────────────────────
 
   setBackgroundOutput(enabled: boolean) {
     this.backgroundOutput = enabled;
     if (!this.ctx) return;
-    if (enabled) void this.prepareStream();
-    this.applyRouteGains();
+    if (enabled) {
+      this.startBackgroundElement();
+      this.markMixChanged();
+    } else {
+      this.bgEl?.pause();
+    }
+    this.applyRoute();
   }
 
-  /** Called when the app is hidden/visible: move the mix onto / off the media element. */
+  /** Called when the app is hidden/visible: hand the sound to the loop element / take it back. */
   setAppHidden(hidden: boolean) {
     this.hidden = hidden;
+    this.log(hidden ? '화면 꺼짐/다른 앱' : '앱으로 돌아옴');
     if (!this.ctx) return;
-    if (hidden && this.streamReady) void this.mediaEl?.play().catch(() => {});
-    this.applyRouteGains();
+    if (!hidden && this.renderedVersion !== this.mixVersion) this.scheduleRender();
+    this.applyRoute();
   }
 
-  /**
-   * Start the media element inside a tap (play() needs the gesture) so it is ready for later.
-   * While visible it carries silence; the mix only moves onto it when the app is hidden.
-   */
-  private async prepareStream(): Promise<void> {
+  private startBackgroundElement() {
     const ctx = this.ctx;
     if (!ctx || !this.backgroundOutput || !isLive(ctx) || typeof Audio === 'undefined') return;
-    if (!this.mediaEl) {
-      this.streamDest = ctx.createMediaStreamDestination();
-      this.streamOut = new GainNode(ctx, { gain: 0 });
-      this.analyser.connect(this.streamOut).connect(this.streamDest);
+    if (!this.bgEl) {
       const el = new Audio();
       el.setAttribute('playsinline', '');
-      el.srcObject = this.streamDest.stream;
-      this.mediaEl = el;
+      el.loop = true;
+      el.muted = true;
+      el.preload = 'auto';
+      this.setLoopSource(el, silentWav());
+      for (const ev of ['pause', 'stalled', 'waiting', 'error', 'ended'] as const) {
+        el.addEventListener(ev, () => this.log(`배경 음원: ${ev}`));
+      }
+      this.bgEl = el;
     }
-    try {
-      await this.mediaEl.play();
-      this.streamReady = true;
-    } catch {
-      this.streamReady = false; // autoplay refused: stay on direct output
-    }
-    this.applyRouteGains();
+    // Muted while visible; starting it inside the tap lets it be unmuted later without one.
+    void this.playElement();
   }
 
-  private applyRouteGains() {
+  private setLoopSource(el: HTMLAudioElement, wav: ArrayBuffer) {
+    const url = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+    el.src = url;
+    if (this.bgUrl) URL.revokeObjectURL(this.bgUrl);
+    this.bgUrl = url;
+  }
+
+  private async playElement() {
+    const el = this.bgEl;
+    if (!el || !el.paused) return;
+    try {
+      await el.play();
+    } catch {
+      this.log('배경 음원 재생 거부(다음 탭에서 다시 시도)');
+    }
+  }
+
+  /** Something audible in the mix changed: re-render the loop once changes settle. */
+  private markMixChanged() {
+    if (!this.ctx || !isLive(this.ctx)) return; // offline renders never render loops themselves
+    this.mixVersion++;
+    if (this.backgroundOutput && !this.hidden) this.scheduleRender();
+  }
+
+  private scheduleRender() {
+    if (this.renderTimer) clearTimeout(this.renderTimer);
+    this.renderTimer = setTimeout(() => void this.renderLoop(), RENDER_DEBOUNCE_MS);
+  }
+
+  private async renderLoop() {
+    this.renderTimer = null;
+    if (this.rendering) return this.scheduleRender();
+    if (!this.bgEl || !this.backgroundOutput || this.hidden) return;
+    const version = this.mixVersion;
+    if (this.tracks.size === 0 && !this.binaural) return;
+    this.rendering = true;
+    const t0 = performance.now();
+    try {
+      const loop = await this.renderLoopAudio();
+      if (version !== this.mixVersion) return this.scheduleRender(); // changed meanwhile
+      const el = this.bgEl;
+      const wasPlaying = !el.paused;
+      this.setLoopSource(el, encodeWav(loop));
+      this.renderedVersion = version;
+      this.hasLoop = true;
+      this.lastRenderMs = Math.round(performance.now() - t0);
+      this.lastRenderAt = Date.now();
+      this.log(`배경 음원 준비 (${this.lastRenderMs}ms)`);
+      if (wasPlaying || this.audible()) await this.playElement();
+      this.applyRoute();
+    } catch (e) {
+      this.log(`배경 음원을 만들지 못함: ${String(e)}`);
+    } finally {
+      this.rendering = false;
+    }
+  }
+
+  /** The current mix as a seamless 30 s stereo loop (also used by checks). */
+  async renderLoopAudio(): Promise<Stereo> {
+    const length = Math.round((PREROLL_SECONDS + LOOP_SECONDS + XFADE_SECONDS) * RENDER_RATE);
+    const renderOne = async (part: 'tone' | 'bed'): Promise<Stereo | null> => {
+      if (part === 'tone' && !this.binaural) return null;
+      if (part === 'bed' && this.tracks.size === 0) return null;
+      let off!: OfflineAudioContext;
+      const e = new WebAudioEngine(this.trackFactory, () => (off = new OfflineAudioContext(2, length, RENDER_RATE)));
+      e.masterLevel = this.masterLevel;
+      e.busLevels = { ...this.busLevels, ...(part === 'tone' ? { ambient: 0, noise: 0 } : { binaural: 0 }) };
+      e.carrier = this.carrier;
+      e.ensure();
+      // The bed render keeps the beat (silent) so the carrier carve matches the live mix.
+      if (this.binaural) e.startBinauralBeat({ beat: this.beatHz, carrier: this.carrier, kind: this.kind });
+      if (part === 'bed') for (const t of this.tracks.values()) e.playTrack(t.meta, t.volume);
+      e.fadeIn(0.5);
+      const buf = await off.startRendering();
+      return { left: buf.getChannelData(0), right: buf.getChannelData(1), sampleRate: buf.sampleRate };
+    };
+    const tone = await renderOne('tone');
+    const bed = await renderOne('bed');
+    return buildLoop(tone, bed);
+  }
+
+  /** Mix is supposed to be audible (started and not faded/suspended). */
+  private audible() {
+    return !!this.ctx && this.fader.gain.value > 0.001;
+  }
+
+  private applyRoute() {
     const ctx = this.ctx;
     if (!ctx) return;
-    const useStream = this.streamReady && this.backgroundOutput && this.hidden;
-    this.route = useStream ? 'stream' : 'direct';
+    const useBg = this.backgroundOutput && this.hidden && this.hasLoop && !!this.bgEl && this.audible();
+    const next = useBg ? 'background' : 'direct';
+    if (next !== this.route) this.log(`출력 경로: ${next === 'background' ? '배경 음원' : '직접'}`);
+    this.route = next;
     const t = ctx.currentTime;
-    this.directOut.gain.setTargetAtTime(useStream ? 0 : 1, t, 0.06);
-    this.streamOut?.gain.setTargetAtTime(useStream ? 1 : 0, t, 0.06);
+    this.directOut.gain.setTargetAtTime(useBg ? 0 : 1, t, 0.05);
+    const el = this.bgEl;
+    if (!el) return;
+    if (useBg) {
+      if (this.renderedVersion !== this.mixVersion) this.log('배경 음원이 최신 믹스보다 이전 버전');
+      this.applyBgFade();
+      el.muted = false;
+      void this.playElement();
+    } else {
+      el.muted = true;
+    }
+  }
+
+  /** Mirror the scheduled sleep fade on the loop element while it is the output (JS timer). */
+  private applyBgFade() {
+    const el = this.bgEl;
+    if (!el) return;
+    const tick = () => {
+      if (!this.bgFade) return void (el.volume = 1);
+      const into = (performance.now() - this.bgFade.start) / 1000;
+      el.volume = Math.max(0, Math.min(1, 1 - into / this.bgFade.seconds));
+    };
+    tick();
+    if (this.bgFadeTimer) clearInterval(this.bgFadeTimer);
+    this.bgFadeTimer = this.bgFade ? setInterval(tick, 1000) : null;
   }
 
   /** Current effective output route (for diagnostics and tests). */
@@ -181,23 +316,57 @@ export class WebAudioEngine implements AudioPort {
     return this.route;
   }
 
-  /** Whether the media element is playing and ready to take over when hidden. */
+  /** Whether a rendered loop is ready to take over when hidden. */
   get backgroundReady() {
-    return this.streamReady;
+    return this.hasLoop && !!this.bgEl && !this.bgEl.paused;
   }
 
   async ensureRunning() {
     const ctx = this.ctx;
-    if (!ctx || this.fader.gain.value < 0.001 || !isLive(ctx)) return;
+    if (!ctx || !this.audible() || !isLive(ctx)) return;
     if (ctx.state !== 'running') {
+      this.log('오디오가 멈춰 있어 다시 시작');
       try {
         await ctx.resume();
       } catch {
         /* needs a tap */
       }
     }
-    if (this.streamReady) await this.mediaEl?.play().catch(() => {});
+    if (this.backgroundOutput) await this.playElement();
   }
+
+  // ─── diagnostics ───────────────────────────────────────────────────────────
+
+  private log(msg: string) {
+    this.events.push({ at: Date.now(), msg });
+    if (this.events.length > MAX_EVENTS) this.events.shift();
+  }
+
+  noteRecovery(what: string) {
+    this.recoveries++;
+    this.log(`자동 복구: ${what}`);
+  }
+
+  diagnostics(): AudioDiagnostics {
+    const ctx = this.ctx;
+    return {
+      route: this.route,
+      contextState: ctx && isLive(ctx) ? ctx.state : 'none',
+      sampleRate: ctx?.sampleRate ?? 0,
+      backgroundOutput: this.backgroundOutput,
+      loopReady: this.hasLoop,
+      loopUpToDate: this.renderedVersion === this.mixVersion,
+      loopPlaying: !!this.bgEl && !this.bgEl.paused,
+      lastRenderMs: this.lastRenderMs,
+      lastRenderAt: this.lastRenderAt,
+      beat: this.binaural ? { hz: this.beatHz, carrier: this.carrier, kind: this.kind } : null,
+      tracks: [...this.tracks.keys()],
+      recoveries: this.recoveries,
+      events: [...this.events],
+    };
+  }
+
+  // ─── sources ───────────────────────────────────────────────────────────────
 
   startBinauralBeat({ beat, carrier, kind = 'binaural' }: BinauralParams) {
     const ctx = this.ensure();
@@ -206,13 +375,16 @@ export class WebAudioEngine implements AudioPort {
     this.binaural = new Beat(ctx, this.buses.binaural, { beat, carrier, fadeIn: 2.5 });
     this.kind = kind;
     this.carrier = carrier;
+    this.beatHz = beat;
     setCarve(this.carve, ctx, true, carrier);
+    this.markMixChanged();
   }
 
   stopBinauralBeat(fadeSeconds = 1.5) {
     this.binaural?.stop(fadeSeconds);
     this.binaural = null;
     if (this.ctx) setCarve(this.carve, this.ctx, false, this.carrier);
+    this.markMixChanged();
   }
 
   isBinauralOn() {
@@ -224,7 +396,10 @@ export class WebAudioEngine implements AudioPort {
   }
 
   setBeatFrequency(hz: number, rampSeconds = 2) {
-    this.binaural?.setBeat(hz, rampSeconds);
+    if (!this.binaural || hz === this.beatHz) return;
+    this.beatHz = hz;
+    this.binaural.setBeat(hz, rampSeconds);
+    this.markMixChanged();
   }
 
   setCarrierFrequency(hz: number) {
@@ -232,18 +407,21 @@ export class WebAudioEngine implements AudioPort {
     this.carrier = hz;
     this.binaural?.setCarrier(hz, 2);
     if (this.ctx) setCarve(this.carve, this.ctx, this.binaural !== null, hz, 2);
+    this.markMixChanged();
   }
 
   setBusVolume(bus: Bus, volume: number) {
     if (this.busLevels[bus] === volume) return; // unchanged: never restart a running ramp
     this.busLevels[bus] = volume;
     if (this.ctx) rampTo(this.buses[bus].gain, sliderToGain(volume), 0.15, this.ctx);
+    this.markMixChanged();
   }
 
   setMasterVolume(volume: number) {
     if (this.masterLevel === volume) return;
     this.masterLevel = volume;
     if (this.ctx) rampTo(this.master.gain, sliderToGain(volume), 0.15, this.ctx);
+    this.markMixChanged();
   }
 
   playTrack(meta: SoundMeta, volume: number) {
@@ -253,7 +431,8 @@ export class WebAudioEngine implements AudioPort {
     gain.connect(this.buses[meta.bus]);
     const source = this.trackFactory(ctx, meta, gain);
     rampTo(gain.gain, sliderToGain(volume), 2, ctx);
-    this.tracks.set(meta.id, { gain, source, volume });
+    this.tracks.set(meta.id, { gain, source, volume, meta });
+    this.markMixChanged();
   }
 
   stopTrack(id: string, fadeSeconds = 1.5) {
@@ -263,6 +442,7 @@ export class WebAudioEngine implements AudioPort {
     rampTo(t.gain.gain, 0, fadeSeconds, this.ctx);
     t.source.stop(fadeSeconds);
     setTimeout(() => t.gain.disconnect(), (fadeSeconds + 0.3) * 1000);
+    this.markMixChanged();
   }
 
   setTrackVolume(id: string, volume: number) {
@@ -270,38 +450,66 @@ export class WebAudioEngine implements AudioPort {
     if (!t || !this.ctx || t.volume === volume) return;
     t.volume = volume;
     rampTo(t.gain.gain, sliderToGain(volume), 0.15, this.ctx);
+    this.markMixChanged();
   }
 
   activeTrackIds() {
     return [...this.tracks.keys()];
   }
 
+  // ─── level / lifecycle ─────────────────────────────────────────────────────
+
   fadeIn(seconds: number) {
     const ctx = this.ensure();
+    this.playGen++;
     this.cancelPendingSuspend();
     rampTo(this.fader.gain, 1, seconds, ctx);
+    if (isLive(ctx)) {
+      void this.playElement();
+      if (this.renderedVersion !== this.mixVersion && !this.hidden && this.backgroundOutput) this.scheduleRender();
+    }
   }
 
   fadeOut(seconds: number): Promise<void> {
     if (!this.ctx) return Promise.resolve();
     rampTo(this.fader.gain, 0, seconds, this.ctx);
+    if (this.route === 'background') this.fadeElement(seconds);
     return new Promise((r) => setTimeout(r, seconds * 1000 + 50));
+  }
+
+  private fadeElement(seconds: number) {
+    this.bgFade = { start: performance.now(), seconds };
+    this.applyBgFade();
   }
 
   async stopAll(fadeSeconds: number) {
     if (!this.ctx) return;
+    const gen = this.playGen;
     await this.fadeOut(fadeSeconds);
     // Something may have started again during the fade (e.g. a new session).
-    if (this.fader.gain.value > 0.001 && this.ctx.state === 'running') return;
+    if (gen !== this.playGen) return;
     this.stopBinauralBeat(0.05);
     for (const id of [...this.tracks.keys()]) this.stopTrack(id, 0.05);
+    this.stopElement();
     this.suspendWhenIdle();
   }
 
   async suspend(fadeSeconds: number) {
     if (!this.ctx) return;
+    const gen = this.playGen;
     await this.fadeOut(fadeSeconds);
+    if (gen !== this.playGen) return;
+    this.stopElement();
     this.suspendWhenIdle();
+  }
+
+  private stopElement() {
+    this.bgEl?.pause();
+    this.bgFade = null;
+    if (this.bgFadeTimer) clearInterval(this.bgFadeTimer);
+    this.bgFadeTimer = null;
+    if (this.bgEl) this.bgEl.volume = 1;
+    this.applyRoute();
   }
 
   async resume(fadeSeconds: number) {
@@ -314,12 +522,10 @@ export class WebAudioEngine implements AudioPort {
     const ctx = this.ctx;
     if (!ctx) return;
     this.cancelPendingSuspend();
+    const gen = this.playGen;
     const wait = Math.max(0, this.chimeUntil - ctx.currentTime) + 0.3;
     this.suspendTimer = setTimeout(() => {
-      if (this.fader.gain.value < 0.001 && isLive(ctx)) {
-        void ctx.suspend();
-        this.mediaEl?.pause();
-      }
+      if (gen === this.playGen && this.fader.gain.value < 0.001 && isLive(ctx)) void ctx.suspend();
     }, wait * 1000);
   }
 
@@ -336,11 +542,18 @@ export class WebAudioEngine implements AudioPort {
     p.setValueAtTime(1, now);
     p.setValueAtTime(1, now + startInSeconds);
     p.linearRampToValueAtTime(0, now + startInSeconds + fadeSeconds);
+    // Same fade for the screen-off loop (driven by a timer while it is the output).
+    this.bgFade = { start: performance.now() + startInSeconds * 1000, seconds: fadeSeconds };
+    if (this.route === 'background') this.applyBgFade();
   }
 
   cancelScheduledFadeOut() {
     if (!this.ctx) return;
     rampTo(this.sleepFader.gain, 1, 0.5, this.ctx);
+    this.bgFade = null;
+    if (this.bgFadeTimer) clearInterval(this.bgFadeTimer);
+    this.bgFadeTimer = null;
+    if (this.bgEl) this.bgEl.volume = 1;
   }
 
   playChime(kind: 'bell' | 'beep') {

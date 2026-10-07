@@ -64,8 +64,8 @@ export function Settings() {
           onChange={(v) => setKeepAwakeFor('focus', v)}
         />
         <ToggleRow
-          title="화면 꺼져도 재생 (실험적)"
-          description="화면이 꺼지거나 다른 앱으로 가도 소리가 이어지도록 재생해요. 토스 앱·기기 정책에 따라 멈출 수 있어요. 확실하게 들으려면 검은 화면을 쓰세요."
+          title="화면 꺼져도 재생"
+          description="화면이 꺼지거나 다른 앱으로 가도 지금 믹스를 음원 파일로 이어서 재생해요(이어폰 좌우 그대로). 기기 정책에 따라 멈출 수 있어요. 확실하게 들으려면 검은 화면을 쓰세요."
           checked={s.backgroundPlayback}
           onChange={setBackgroundPlayback}
         />
@@ -87,6 +87,7 @@ export function Settings() {
         <button type="button" className="list-item" onClick={() => navigate('/timer')}><span className="strong">타이머·루틴</span><span aria-hidden="true">›</span></button>
         <button type="button" className="list-item" onClick={() => navigate('/binaural')}><span className="strong">집중 사운드</span><span aria-hidden="true">›</span></button>
         <button type="button" className="list-item" onClick={() => navigate('/settings/licenses')}><span className="strong">사운드 출처·라이선스</span><span aria-hidden="true">›</span></button>
+        <button type="button" className="list-item" onClick={() => navigate('/settings/audio')}><span className="strong">소리 진단</span><span aria-hidden="true">›</span></button>
       </section>
 
       <section className="card stack-s" aria-label="데이터 관리">

@@ -3,7 +3,7 @@
  * Screens call these; they never talk to the audio engine directly.
  */
 import { getSound, QUICK_PICKS } from '../sounds/catalog';
-import { holdPrewarm, prewarmSounds } from '../audio/prewarm';
+import { holdPrewarm, prewarmSounds, setPrewarmPaused } from '../audio/prewarm';
 import type { UseCase } from '../sounds/types';
 import type { BeatKind, Bus } from '../audio/types';
 import type { Recipe } from '../sounds/recipes';
@@ -201,6 +201,7 @@ function syncAudio() {
 
 export async function play() {
   holdPrewarm(4000);
+  setPrewarmPaused(true);
   await services.audio.unlock();
   const alreadyPlaying = getState().player.playing;
   setState((s) => ({ player: { ...s.player, playing: true } }));
@@ -213,6 +214,7 @@ export async function stopPlayback() {
   setState((s) => ({ player: { ...s.player, playing: false } }));
   applyAwake();
   await services.audio.stopAll(1.2);
+  if (!getState().player.playing) setPrewarmPaused(false);
 }
 
 function updatePlayer(patch: Partial<ReturnType<typeof getState>['player']>) {
@@ -333,6 +335,26 @@ export function setBeat(hz: number) {
 
 let ticker: ReturnType<typeof setInterval> | null = null;
 let lastSnapshot = 0;
+let lastWatch = 0;
+
+/**
+ * While sound should be playing, make sure the engine still plays what the player says
+ * (beat on and of the right kind, every sound present, context running) and restore it if not.
+ */
+function watchAudio() {
+  const { player, settings, session } = getState();
+  if (!player.playing || !session || session.status === 'ended' || session.status === 'completed') return;
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+  const audio = services.audio;
+  const beatWrong = player.binauralOn !== audio.isBinauralOn() || (player.binauralOn && audio.beatKind() !== settings.beatKind);
+  const active = new Set(audio.activeTrackIds());
+  const missing = player.tracks.filter((t) => getSound(t.id) && !active.has(t.id)).map((t) => t.id);
+  if (beatWrong || missing.length) {
+    audio.noteRecovery(beatWrong ? '비트' : `배경음 ${missing.join(', ')}`);
+    syncAudio();
+  }
+  void audio.ensureRunning();
+}
 
 export function buildPlan(mode: UseCase, settings: Settings, routines: Routine[], overrideSeconds?: number): SessionPlan {
   const player = getState().player;
@@ -424,6 +446,11 @@ export function handleTick() {
       haptic('tick');
     }
     if (e.type === 'completed') void finishSession();
+  }
+
+  if (Date.now() - lastWatch > 2000) {
+    lastWatch = Date.now();
+    watchAudio();
   }
 
   if (Date.now() - lastSnapshot > 15_000 && next.status !== 'completed') {

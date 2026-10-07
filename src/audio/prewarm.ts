@@ -10,10 +10,20 @@ const warmed = new Set<string>();
 const queue: string[] = [];
 let scheduled = false;
 let holdUntil = 0;
+let paused = false;
 
 /** Keep the main thread free while playback is starting (queue resumes afterwards). */
 export function holdPrewarm(ms: number) {
   holdUntil = Date.now() + ms;
+}
+
+/**
+ * No background generation at all while sound is playing: on slow phones generating a sound
+ * takes the main thread for hundreds of ms. Sounds needed right now are generated on demand.
+ */
+export function setPrewarmPaused(p: boolean) {
+  paused = p;
+  if (!p) schedule();
 }
 
 type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number };
@@ -32,6 +42,7 @@ function schedule() {
   scheduled = true;
   const run = () => {
     scheduled = false;
+    if (paused) return; // resumed by setPrewarmPaused(false)
     if (Date.now() < holdUntil) {
       setTimeout(schedule, holdUntil - Date.now());
       return;

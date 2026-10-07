@@ -23,6 +23,8 @@ export default defineConfig({
   webView: {
     // Audio plays inline in the mini-app (never forced into a fullscreen player).
     allowsInlineMediaPlayback: true,
+    // The screen-off loop element is (re)started after the first tap when the mix changes.
+    mediaPlaybackRequiresUserAction: false,
     bounces: false,
     pullToRefreshEnabled: false,
   },

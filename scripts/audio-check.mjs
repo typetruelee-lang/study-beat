@@ -273,6 +273,82 @@ const results = await page.evaluate(async () => {
     }
   }
 
+  // 3b) START-UP, every mode: the beat settles within 3 s and then holds steady (no dips/pumping)
+  for (const [mode, beat] of [['focus', 10], ['sleep', 2], ['relax', 6]]) {
+    const [L, R] = await renderEngine(20, (e) => {
+      e.startBinauralBeat({ beat, carrier: 400 });
+      for (const t of DEFAULT_TRACKS[mode]) e.playTrack(SOUNDS.find((x) => x.id === t.id), t.volume);
+    });
+    const lv = [], rv = [];
+    for (let t = 3; t < 20; t++) { lv.push(goertzel(L, t * SR, (t + 1) * SR, 400)); rv.push(goertzel(R, t * SR, (t + 1) * SR, 400 + beat)); }
+    const spread = (v) => 20 * Math.log10(Math.max(...v) / Math.min(...v));
+    const sl = spread(lv), sr = spread(rv);
+    check(`start-up ${mode}: beat level steady from 3 s to 20 s (L ±${sl.toFixed(2)} dB, R ±${sr.toFixed(2)} dB)`, sl < 1 && sr < 1, { lv, rv });
+  }
+
+  // 3c) SCREEN-OFF LOOP FILE: every mode's default mix and every recipe, rendered as the app does
+  {
+    const { RECIPES } = await import('/src/sounds/recipes.ts');
+    const { encodeWav, LOOP_SECONDS } = await import('/src/audio/backgroundTrack.ts');
+    const mixes = [
+      ...[['focus', 10], ['sleep', 2], ['relax', 6]].map(([mode, beat]) => ({ name: `default ${mode}`, beat, tracks: DEFAULT_TRACKS[mode], intensity: 0.35 })),
+      ...RECIPES.map((r) => ({ name: r.id, beat: r.beat, tracks: r.tracks, intensity: r.intensity })),
+    ];
+    const g = (d, sr, a, b, f) => {
+      const k = 2 * Math.cos((2 * Math.PI * f) / sr);
+      let s1 = 0, s2 = 0;
+      for (let i = a; i < b; i++) { const v = d[i] + k * s1 - s2; s2 = s1; s1 = v; }
+      return Math.sqrt(s1 * s1 + s2 * s2 - k * s1 * s2) / (b - a);
+    };
+    const bad = [];
+    let checked = 0;
+    for (const m of mixes) {
+      const e = new WebAudioEngine(createTrack, () => new OfflineAudioContext(2, SR, SR));
+      e.setBusVolume('binaural', m.intensity);
+      if (m.beat !== null) e.startBinauralBeat({ beat: m.beat, carrier: 400 });
+      for (const t of m.tracks) e.playTrack(SOUNDS.find((x) => x.id === t.id), t.volume);
+      const loop = await e.renderLoopAudio();
+      const { left: L, right: R, sampleRate: sr } = loop;
+      const n = L.length;
+      const problems = [];
+      if (n !== LOOP_SECONDS * sr) problems.push('length');
+      let peak = 0, nan = false, maxStep = 0;
+      for (let i = 0; i < n; i++) {
+        if (Number.isNaN(L[i]) || Number.isNaN(R[i])) nan = true;
+        peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
+        if (i) maxStep = Math.max(maxStep, Math.abs(L[i] - L[i - 1]), Math.abs(R[i] - R[i - 1]));
+      }
+      const seam = Math.max(Math.abs(L[0] - L[n - 1]), Math.abs(R[0] - R[n - 1]));
+      if (nan || peak >= 1) problems.push(`peak ${peak.toFixed(2)}`);
+      if (seam > maxStep * 1.05 + 1e-4) problems.push(`seam ${seam.toFixed(4)} > step ${maxStep.toFixed(4)}`);
+      if (m.beat !== null) {
+        const rHz = 400 + m.beat;
+        // Stereo kept: each ear has its own tone (a mono path would put both in both ears).
+        const lOwn = g(L, sr, 5 * sr, 6 * sr, 400), lOther = g(L, sr, 5 * sr, 6 * sr, rHz);
+        const rOwn = g(R, sr, 5 * sr, 6 * sr, rHz), rOther = g(R, sr, 5 * sr, 6 * sr, 400);
+        if (!(lOwn > 10 * lOther && rOwn > 10 * rOther)) problems.push(`stereo L ${(lOwn / lOther).toFixed(1)}× R ${(rOwn / rOther).toFixed(1)}×`);
+        // Beat level steady across the whole loop, including the seam second.
+        const lv = [];
+        for (let t = 0; t < LOOP_SECONDS; t++) lv.push(g(L, sr, t * sr, (t + 1) * sr, 400));
+        const spread = 20 * Math.log10(Math.max(...lv) / Math.min(...lv));
+        if (spread > 1) problems.push(`beat level ±${spread.toFixed(2)} dB`);
+        // Across the seam: last half second + first half second as one continuous tone.
+        const half = sr / 2, joined = new Float32Array(sr);
+        joined.set(L.subarray(n - half), 0); joined.set(L.subarray(0, half), half);
+        const across = g(joined, sr, 0, sr, 400), inside = g(L, sr, 10 * sr, 11 * sr, 400);
+        if (Math.abs(20 * Math.log10(across / inside)) > 0.5) problems.push(`seam tone ${(20 * Math.log10(across / inside)).toFixed(2)} dB`);
+      }
+      // The WAV file itself decodes back to the same stereo signal.
+      const wav = encodeWav(loop);
+      const dec = await new OfflineAudioContext(2, 1, sr).decodeAudioData(wav.slice(0));
+      if (dec.numberOfChannels !== 2 || dec.length !== n) problems.push(`wav ${dec.numberOfChannels}ch ${dec.length}`);
+      else if (m.beat !== null && !(g(dec.getChannelData(1), sr, 5 * sr, 6 * sr, 400 + m.beat) > 10 * g(dec.getChannelData(1), sr, 5 * sr, 6 * sr, 400))) problems.push('wav right ear');
+      if (problems.length) bad.push({ mix: m.name, problems });
+      checked++;
+    }
+    check(`screen-off loop file: ${checked} mixes — stereo per ear, steady beat, seamless 30 s loop, valid WAV`, bad.length === 0, bad);
+  }
+
   // 4) noise colours: white brighter than pink brighter than brown (rendered through Web Audio)
   {
     const { noiseBuffer } = await import('/src/audio/ambient/buffers.ts');

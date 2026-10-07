@@ -4,9 +4,15 @@
  */
 export function rampTo(param: AudioParam, value: number, seconds: number, ctx: BaseAudioContext, delay = 0) {
   const start = ctx.currentTime + delay;
-  const current = param.value;
-  param.cancelScheduledValues(start);
-  param.setValueAtTime(current, start);
+  if (typeof param.cancelAndHoldAtTime === 'function') {
+    // Freezes a ramp in progress exactly where it is at `start` (reading param.value can lag a
+    // render quantum or, in some engines, return the last set value → a jump).
+    param.cancelAndHoldAtTime(start);
+  } else {
+    const current = param.value;
+    param.cancelScheduledValues(start);
+    param.setValueAtTime(current, start);
+  }
   if (seconds <= 0) param.setValueAtTime(value, start);
   else param.linearRampToValueAtTime(value, start + seconds);
 }

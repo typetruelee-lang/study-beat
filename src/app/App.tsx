@@ -14,6 +14,7 @@ import { TimerSettings } from '../components/Timer/TimerSettings';
 import { Statistics } from '../components/Statistics/Statistics';
 import { Settings } from '../components/Settings/Settings';
 import { Licenses } from '../components/Settings/Licenses';
+import { AudioDiagnostics } from '../components/Settings/AudioDiagnostics';
 import { NowPlaying } from '../components/AudioPlayer/NowPlaying';
 import { MiniPlayer } from '../components/AudioPlayer/MiniPlayer';
 import { TabBar } from '../components/AudioPlayer/TabBar';
@@ -67,6 +68,7 @@ function Shell() {
         <Route path="/stats" element={<Statistics />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/settings/licenses" element={<Licenses />} />
+        <Route path="/settings/audio" element={<AudioDiagnostics />} />
         <Route path="/now" element={<NowPlaying />} />
         <Route path="*" element={<Home />} />
       </Routes>

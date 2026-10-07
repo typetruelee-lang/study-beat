@@ -22,7 +22,8 @@
     "test:server": "node scripts/server-check.mjs",
     "dev:web": "vite --mode web",
     "check:toss": "node scripts/toss-preflight.mjs",
-    "store-assets": "node scripts/store-assets.mjs"
+    "store-assets": "node scripts/store-assets.mjs",
+    "test:soak": "node scripts/soak.mjs"
   },
   "dependencies": {
     "@apps-in-toss/web-framework": "^3.6.0",
