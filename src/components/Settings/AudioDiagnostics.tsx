@@ -19,7 +19,7 @@ export function AudioDiagnostics() {
     ['출력 경로', ROUTE[d.route]],
     ['오디오 상태', `${d.contextState}${d.sampleRate ? ` · ${d.sampleRate} Hz` : ''}`],
     ['화면 꺼져도 재생', d.backgroundOutput ? '켜짐' : '꺼짐'],
-    ['배경 음원', d.loopReady ? `${d.loopUpToDate ? '최신' : '이전 믹스'} · ${d.loopPlaying ? '대기 중(재생)' : '멈춤'} · ${time(d.lastRenderAt)} (${d.lastRenderMs}ms)` : '아직 없음'],
+    ['배경 음원', d.loopReady ? `${d.loopKind === 'stream' ? `이음매 없는 스트림 · ${d.streamAhead}초 준비` : 'WAV 반복(반복마다 짧은 끊김)'} · ${d.loopUpToDate ? '최신' : '이전 믹스'} · ${d.loopPlaying ? '대기 중(재생)' : '멈춤'} · ${time(d.lastRenderAt)} (${d.lastRenderMs}ms)` : '아직 없음'],
     ['비트', d.beat ? `${d.beat.hz} Hz · ${d.beat.carrier} Hz 기준 · ${d.beat.kind === 'binaural' ? '이어폰용' : '스피커용'}` : '꺼짐'],
     ['배경음', d.tracks.join(', ') || '없음'],
     ['자동 복구', `${d.recoveries}회`],

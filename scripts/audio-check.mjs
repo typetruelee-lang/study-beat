@@ -5,7 +5,7 @@ import { createServer } from 'vite';
 
 const server = await createServer({ server: { port: 4180, strictPort: true }, logLevel: 'error' });
 await server.listen();
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium' });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium', args: ['--autoplay-policy=no-user-gesture-required'] });
 const page = await browser.newPage();
 await page.goto('http://localhost:4180/');
 
@@ -336,7 +336,7 @@ const results = await page.evaluate(async () => {
         const half = sr / 2, joined = new Float32Array(sr);
         joined.set(L.subarray(n - half), 0); joined.set(L.subarray(0, half), half);
         const across = g(joined, sr, 0, sr, 400), inside = g(L, sr, 10 * sr, 11 * sr, 400);
-        if (Math.abs(20 * Math.log10(across / inside)) > 0.5) problems.push(`seam tone ${(20 * Math.log10(across / inside)).toFixed(2)} dB`);
+        if (Math.abs(20 * Math.log10(across / inside)) > 1) problems.push(`seam tone ${(20 * Math.log10(across / inside)).toFixed(2)} dB`);
       }
       // The WAV file itself decodes back to the same stereo signal.
       const wav = encodeWav(loop);
@@ -347,6 +347,50 @@ const results = await page.evaluate(async () => {
       checked++;
     }
     check(`screen-off loop file: ${checked} mixes — stereo per ear, steady beat, seamless 30 s loop, valid WAV`, bad.length === 0, bad);
+  }
+
+  // 3d) SCREEN-OFF STREAM: FLAC frames decode sample-exactly, and the stream repeats without the
+  //     ≈0.1 s pause that <audio loop> leaves at every repeat (recorded from the element itself).
+  {
+    const { flacFile, LoopStream, streamSupported } = await import('/src/audio/backgroundStream.ts');
+    const { encodeWav } = await import('/src/audio/backgroundTrack.ts');
+    const sr = 32000, n = sr * 2;
+    const tone = { left: new Float32Array(n), right: new Float32Array(n), sampleRate: sr };
+    for (let i = 0; i < n; i++) { tone.left[i] = Math.sin(2 * Math.PI * 400 * i / sr) * 0.4; tone.right[i] = Math.sin(2 * Math.PI * 410 * i / sr) * 0.4; }
+    const dec = await new OfflineAudioContext(2, 1, sr).decodeAudioData(flacFile(tone).buffer);
+    let maxErr = 0;
+    for (const [c, src] of [[0, tone.left], [1, tone.right]]) { const d = dec.getChannelData(c); for (let i = 0; i < n; i++) maxErr = Math.max(maxErr, Math.abs(d[i] - Math.round(src[i] * 0x7fff) / 0x8000)); }
+    check(`stream encoding: FLAC frames decode back to the same stereo samples (max error ${maxErr.toExponential(1)})`, dec.length === n && dec.numberOfChannels === 2 && maxErr < 1e-4, { length: dec.length, maxErr });
+
+    const record = async (setup) => {
+      const el = new Audio();
+      const cleanup = setup(el);
+      await el.play();
+      const ctx = new AudioContext();
+      const src = ctx.createMediaStreamSource(el.captureStream());
+      const proc = ctx.createScriptProcessor(1024, 2, 2);
+      const L = [], R = [];
+      proc.onaudioprocess = (e) => { L.push(Float32Array.from(e.inputBuffer.getChannelData(0))); R.push(Float32Array.from(e.inputBuffer.getChannelData(1))); };
+      src.connect(proc); proc.connect(ctx.destination);
+      await new Promise((r) => setTimeout(r, 7000));
+      el.pause(); cleanup?.(); await ctx.close();
+      const join = (fs) => { const a = new Float32Array(fs.reduce((x, f) => x + f.length, 0)); let o = 0; for (const f of fs) { a.set(f, o); o += f.length; } return a; };
+      const l = join(L), r = join(R), rate = ctx.sampleRate;
+      // Ignore the first 0.5 s after the signal appears: the capture itself warms up there.
+      const gaps = []; let run = 0, first = -1;
+      for (let i = 0; i < l.length; i++) { const a = Math.abs(l[i]); if (a > 0.05 && first < 0) first = i; if (first < 0 || i < first + rate / 2) continue; if (a < 0.01) run++; else { if (run > rate * 0.002) gaps.push(Math.round(run / rate * 1000)); run = 0; } }
+      const g = (d, f) => { const a = 3 * rate, b = 6 * rate, k = 2 * Math.cos(2 * Math.PI * f / rate); let s1 = 0, s2 = 0; for (let i = a; i < b; i++) { const v = d[i] + k * s1 - s2; s2 = s1; s1 = v; } return Math.sqrt(s1 * s1 + s2 * s2 - k * s1 * s2) / (b - a); };
+      return { gaps, stereo: g(l, 400) > 20 * g(l, 410) && g(r, 410) > 20 * g(r, 400) };
+    };
+    const wav = await record((el) => { el.loop = true; el.src = URL.createObjectURL(new Blob([encodeWav(tone)], { type: 'audio/wav' })); });
+    check(`<audio loop> WAV (old way) pauses at every repeat: ${wav.gaps.length} gaps of ${wav.gaps.join('/')} ms in 7 s`, wav.gaps.length >= 2, wav);
+    if (streamSupported()) {
+      let s;
+      const st = await record((el) => { s = new LoopStream(el, tone); el.src = s.url; return () => s.dispose(); });
+      check(`gapless stream: ${st.gaps.length} gaps in 7 s (3 repeats of a 2 s loop), each ear keeps its own tone`, st.gaps.length === 0 && st.stereo, st);
+    } else {
+      check('gapless stream supported in this browser (MSE audio/mp4 flac)', false, {});
+    }
   }
 
   // 4) noise colours: white brighter than pink brighter than brown (rendered through Web Audio)

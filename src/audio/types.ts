@@ -77,6 +77,10 @@ export interface AudioDiagnostics {
   loopReady: boolean;
   loopUpToDate: boolean;
   loopPlaying: boolean;
+  /** 'stream': gapless MSE stream · 'wav': file with loop (short pause at each repeat). */
+  loopKind: 'stream' | 'wav' | null;
+  /** Seconds of stream buffered ahead of the playhead. */
+  streamAhead: number;
   lastRenderMs: number;
   lastRenderAt: number;
   beat: { hz: number; carrier: number; kind: BeatKind } | null;
@@ -115,7 +119,7 @@ export class SilentAudioPort implements AudioPort {
   async ensureRunning() {}
   getAnalyser() { return null; }
   diagnostics(): AudioDiagnostics {
-    return { route: 'direct', contextState: 'none', sampleRate: 0, backgroundOutput: false, loopReady: false, loopUpToDate: true, loopPlaying: false, lastRenderMs: 0, lastRenderAt: 0, beat: null, tracks: [...this.tracks], recoveries: 0, events: [] };
+    return { route: 'direct', contextState: 'none', sampleRate: 0, backgroundOutput: false, loopReady: false, loopUpToDate: true, loopPlaying: false, loopKind: null, streamAhead: 0, lastRenderMs: 0, lastRenderAt: 0, beat: null, tracks: [...this.tracks], recoveries: 0, events: [] };
   }
   noteRecovery() {}
 }

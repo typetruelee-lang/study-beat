@@ -19,12 +19,19 @@ const check = (name, pass, detail = '') => {
   console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${pass ? '' : '  ' + JSON.stringify(detail)}`);
 };
 const state = () => page.evaluate(() => window.__fc.getState());
-const setVisible = (visible) =>
-  page.evaluate((v) => {
+// A really hidden page draws no frames; the engine checks that after "hidden" (its frame source is
+// switched off here, unless `frames` simulates an in-app browser that says hidden while on screen).
+const setVisible = (visible, { frames = false } = {}) =>
+  page.evaluate(([v, keepFrames]) => {
+    const a = window.__fc?.audio();
+    if (a) {
+      a.__frame ??= a.requestFrame;
+      a.requestFrame = v || keepFrames ? a.__frame : () => {};
+    }
     Object.defineProperty(document, 'visibilityState', { value: v ? 'visible' : 'hidden', configurable: true });
     Object.defineProperty(document, 'hidden', { value: !v, configurable: true });
     document.dispatchEvent(new Event('visibilitychange'));
-  }, visible);
+  }, [visible, frames]);
 
 await page.clock.install({ time: new Date(2026, 8, 30, 14, 0, 0) });
 await page.goto('http://localhost:4182/');
@@ -230,17 +237,24 @@ const waitLoop = async () => {
   return false;
 };
 check('while the app is visible, output goes straight to the speakers (most stable path)', (await page.evaluate(() => window.__fc.audio().outputRoute)) === 'direct');
-check('screen-off loop of the current mix is rendered and waits muted (a file, not a MediaStream)', (await waitLoop()) && (await page.evaluate(() => { const el = window.__fc.audio().bgEl; return !!el && !el.paused && el.muted && el.src.startsWith('blob:') && !el.srcObject; })));
+check('screen-off loop of the current mix is ready as a gapless stream, waiting silent (muted, volume 0)', (await waitLoop()) && (await page.evaluate(() => { const a = window.__fc.audio(); const el = a.bgEl; return !!el && !el.paused && el.muted && el.volume === 0 && el.src.startsWith('blob:') && !el.srcObject && a.diagnostics().loopKind === 'stream'; })));
 await setVisible(false);
 await page.clock.runFor(300);
-check('screen off / app hidden: the loop file takes over (unmuted), live output fades out', await page.evaluate(() => { const a = window.__fc.audio(); return a.outputRoute === 'background' && !a.bgEl.muted && !a.bgEl.paused; }));
+check('screen off / app hidden: the loop stream takes over (unmuted, volume 1), live output fades out', await page.evaluate(() => { const a = window.__fc.audio(); return a.outputRoute === 'background' && !a.bgEl.muted && a.bgEl.volume === 1 && !a.bgEl.paused; }));
 await page.clock.runFor(600);
 await new Promise((r) => setTimeout(r, 200));
 check('only one copy plays: the live graph is paused while the loop file is the output', (await page.evaluate(() => window.__fc.audio().ctx.state)) === 'suspended');
 await setVisible(true);
 await page.clock.runFor(600);
 await new Promise((r) => setTimeout(r, 200));
-check('back in the app: output returns to direct, live graph running, file muted', await page.evaluate(() => { const a = window.__fc.audio(); return a.outputRoute === 'direct' && a.bgEl.muted && a.ctx.state === 'running'; }));
+check('back in the app: output returns to direct, live graph running, stream silent', await page.evaluate(() => { const a = window.__fc.audio(); return a.outputRoute === 'direct' && a.bgEl.muted && a.bgEl.volume === 0 && a.ctx.state === 'running'; }));
+// In-app browsers can say "hidden" while the page is on screen: frames keep coming → stay live.
+await setVisible(false, { frames: true });
+await page.clock.runFor(1200);
+await new Promise((r) => setTimeout(r, 200));
+check('false "hidden" signal while frames are still drawn: live output stays, stream stays silent', await page.evaluate(() => { const a = window.__fc.audio(); return a.outputRoute === 'direct' && a.bgEl.volume === 0 && a.ctx.state === 'running' && a.diagnostics().events.some((e) => e.msg.startsWith('숨김 신호 무시')); }));
+await setVisible(true);
+await page.clock.runFor(600);
 await page.getByRole('button', { name: '집중 계속하기' }).click();
 await page.clock.runFor(300);
 await page.getByRole('button', { name: '화면 설정' }).click();

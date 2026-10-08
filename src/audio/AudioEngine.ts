@@ -19,6 +19,7 @@ import type { SoundMeta } from '../sounds/types';
 import { BinauralBeat } from './binaural/BinauralBeat';
 import { IsochronicTone } from './binaural/IsochronicTone';
 import { buildLoop, encodeWav, LOOP_SECONDS, PREROLL_SECONDS, RENDER_RATE, silentWav, XFADE_SECONDS, type Stereo } from './backgroundTrack';
+import { LoopStream, streamSupported } from './backgroundStream';
 import { createCarve, setCarve } from './carve';
 import { playChime } from './chime';
 import { rampTo, sliderToGain } from './ramp';
@@ -78,6 +79,10 @@ export class WebAudioEngine implements AudioPort {
   private route: 'direct' | 'background' = 'direct';
   private bgEl: HTMLAudioElement | null = null;
   private bgUrl: string | null = null;
+  private bgStream: LoopStream | null = null;
+  private hiddenCheck: ReturnType<typeof setTimeout> | null = null;
+  /** Frame source for the "really hidden?" check (replaceable in checks). */
+  requestFrame: (cb: () => void) => void = (cb) => requestAnimationFrame(cb);
   private mixVersion = 0;
   private renderedVersion = -1;
   private hasLoop = false;
@@ -171,6 +176,26 @@ export class WebAudioEngine implements AudioPort {
   setAppHidden(hidden: boolean) {
     this.hidden = hidden;
     this.log(hidden ? '화면 꺼짐/다른 앱' : '앱으로 돌아옴');
+    if (this.hiddenCheck) clearTimeout(this.hiddenCheck);
+    this.hiddenCheck = null;
+    if (hidden && typeof requestAnimationFrame === 'function') {
+      // Some in-app browsers report "hidden" while the page is on screen. A hidden page draws no
+      // frames; if frames keep coming, the page is visible and the live output stays.
+      let frames = 0;
+      const count = () => {
+        frames++;
+        if (this.hidden && frames < 30) this.requestFrame(count);
+      };
+      this.requestFrame(count);
+      this.hiddenCheck = setTimeout(() => {
+        this.hiddenCheck = null;
+        if (this.hidden && frames >= 10) {
+          this.log('숨김 신호 무시 (화면이 계속 그려짐)');
+          this.hidden = false;
+          this.applyRoute();
+        }
+      }, 800);
+    }
     if (!this.ctx) return;
     if (!hidden && this.renderedVersion !== this.mixVersion) this.scheduleRender();
     this.applyRoute();
@@ -184,8 +209,9 @@ export class WebAudioEngine implements AudioPort {
       el.setAttribute('playsinline', '');
       el.loop = true;
       el.muted = true;
+      el.volume = 0; // also silent where `muted` is ignored
       el.preload = 'auto';
-      this.setLoopSource(el, silentWav());
+      el.src = this.blobUrl(silentWav());
       for (const ev of ['pause', 'stalled', 'waiting', 'error', 'ended'] as const) {
         el.addEventListener(ev, () => this.log(`배경 음원: ${ev}`));
       }
@@ -203,11 +229,29 @@ export class WebAudioEngine implements AudioPort {
     void this.playElement();
   }
 
-  private setLoopSource(el: HTMLAudioElement, wav: ArrayBuffer) {
+  private blobUrl(wav: ArrayBuffer) {
     const url = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
-    el.src = url;
     if (this.bgUrl) URL.revokeObjectURL(this.bgUrl);
     this.bgUrl = url;
+    return url;
+  }
+
+  /**
+   * Put a rendered loop on the element: an endless gapless stream where supported (MSE + FLAC),
+   * otherwise a WAV file with `loop` (which pauses ≈0.1 s at every repeat).
+   */
+  private setLoopSource(el: HTMLAudioElement, loop: Stereo) {
+    this.bgStream?.dispose();
+    this.bgStream = null;
+    if (streamSupported()) {
+      const stream = new LoopStream(el, loop, (m) => this.log(m));
+      this.bgStream = stream;
+      el.loop = false;
+      el.src = stream.url;
+    } else {
+      el.loop = true;
+      el.src = this.blobUrl(encodeWav(loop));
+    }
   }
 
   private async playElement() {
@@ -245,12 +289,12 @@ export class WebAudioEngine implements AudioPort {
       if (version !== this.mixVersion) return this.scheduleRender(); // changed meanwhile
       const el = this.bgEl;
       const wasPlaying = !el.paused;
-      this.setLoopSource(el, encodeWav(loop));
+      this.setLoopSource(el, loop);
       this.renderedVersion = version;
       this.hasLoop = true;
       this.lastRenderMs = Math.round(performance.now() - t0);
       this.lastRenderAt = Date.now();
-      this.log(`배경 음원 준비 (${this.lastRenderMs}ms)`);
+      this.log(`배경 음원 준비 (${this.lastRenderMs}ms, ${this.bgStream ? '이음매 없는 스트림' : 'WAV 반복'})`);
       if (wasPlaying || this.audible()) await this.playElement();
       this.applyRoute();
     } catch (e) {
@@ -323,7 +367,10 @@ export class WebAudioEngine implements AudioPort {
       }
       return;
     }
-    if (el) el.muted = true;
+    if (el) {
+      el.muted = true;
+      el.volume = 0;
+    }
     if (!this.soundOn && ctx.state === 'suspended') {
       // Stopped while the live graph was paused: never let its old level come back.
       this.fader.gain.cancelScheduledValues(t);
@@ -399,6 +446,8 @@ export class WebAudioEngine implements AudioPort {
       loopReady: this.hasLoop,
       loopUpToDate: this.renderedVersion === this.mixVersion,
       loopPlaying: !!this.bgEl && !this.bgEl.paused,
+      loopKind: this.hasLoop ? (this.bgStream ? 'stream' : 'wav') : null,
+      streamAhead: this.bgStream ? Math.round(this.bgStream.ahead) : 0,
       lastRenderMs: this.lastRenderMs,
       lastRenderAt: this.lastRenderAt,
       beat: this.binaural ? { hz: this.beatHz, carrier: this.carrier, kind: this.kind } : null,
@@ -552,7 +601,6 @@ export class WebAudioEngine implements AudioPort {
     this.bgFade = null;
     if (this.bgFadeTimer) clearInterval(this.bgFadeTimer);
     this.bgFadeTimer = null;
-    if (this.bgEl) this.bgEl.volume = 1;
     this.applyRoute();
   }
 
@@ -597,7 +645,7 @@ export class WebAudioEngine implements AudioPort {
     this.bgFade = null;
     if (this.bgFadeTimer) clearInterval(this.bgFadeTimer);
     this.bgFadeTimer = null;
-    if (this.bgEl) this.bgEl.volume = 1;
+    if (this.bgEl && this.route === 'background') this.bgEl.volume = 1;
   }
 
   playChime(kind: 'bell' | 'beep') {

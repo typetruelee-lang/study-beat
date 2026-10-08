@@ -18,7 +18,8 @@ export const LOOP_SECONDS = 30;
 export const PREROLL_SECONDS = 3;
 /** Crossfade of the ambient bed at the seam (the tone needs none: it repeats exactly). */
 export const XFADE_SECONDS = 1.5;
-export const RENDER_RATE = 44100;
+/** 32 kHz: plenty for a 400–510 Hz beat and the ambient beds; 30 s = 300 FLAC blocks of 3200. */
+export const RENDER_RATE = 32000;
 
 export interface Stereo {
   left: Float32Array;
