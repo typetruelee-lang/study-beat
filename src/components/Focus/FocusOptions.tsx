@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { setBeatKind, setBinauralOn, setBusVolume, updateSettings } from '../../app/actions';
 import { bandLabel } from '../../app/beats';
 import { useAppState } from '../../app/store';
-import { formatClock } from '../../lib/format';
+import { formatClock, formatDuration } from '../../lib/format';
 import { ClayButton } from '../common/ClayButton';
 import { ChipGroup } from '../common/Chip';
 import { SoundPicks } from '../SoundLibrary/SoundPicks';
@@ -10,7 +10,7 @@ import { Slider } from '../common/Slider';
 import { RecipeRow } from '../Recipes/RecipeRow';
 import './focus.css';
 
-const QUICK_TIMES = [25, 50, 90];
+const QUICK_TIMES = [25, 50, 90, 120];
 
 /** Break length that goes with a focus length (25→5, 50→10, 90→15). */
 const breakFor = (min: number) => (min >= 90 ? 900 : min >= 50 ? 600 : 300);
@@ -35,7 +35,7 @@ export function FocusTimeOptions() {
         onChange={(m) =>
           updateSettings((s) => ({ focusTimer: { ...s.focusTimer, kind: 'countdown', routineId: null, seconds: m * 60, breakSeconds: breakFor(m) } }))
         }
-        options={QUICK_TIMES.map((m) => ({ value: m, label: `${m}분` }))}
+        options={QUICK_TIMES.map((m) => ({ value: m, label: m >= 60 && m % 60 === 0 ? formatDuration(m * 60) : `${m}분` }))}
       />
       {quick === -1 && (
         <p className="small muted">

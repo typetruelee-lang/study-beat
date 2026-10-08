@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { services } from '../../app/services';
+import { isInToss } from '../../platform/toss';
 import { ScreenHeader } from '../common/ScreenHeader';
 
 const ROUTE = { direct: '직접 출력 (앱 화면이 보일 때)', background: '배경 음원 (화면 꺼짐·다른 앱)' } as const;
@@ -16,6 +17,7 @@ export function AudioDiagnostics() {
     return () => clearInterval(id);
   }, []);
   const rows: [string, string][] = [
+    ['실행 환경', isInToss() ? '토스 앱' : '브라우저'],
     ['출력 경로', ROUTE[d.route]],
     ['오디오 상태', `${d.contextState}${d.sampleRate ? ` · ${d.sampleRate} Hz` : ''}`],
     ['화면 꺼져도 재생', d.backgroundOutput ? '켜짐' : '꺼짐'],

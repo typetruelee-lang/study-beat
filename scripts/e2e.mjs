@@ -406,6 +406,18 @@ check('소리 진단 screen shows the route and the recovery', (await page.getBy
 await page.evaluate(() => window.__fc.endSessionEarly());
 await page.clock.runFor(2000);
 
+// ── Times up to 2 hours: relax 2시간 chip, focus 2시간 chip
+await page.goto('http://localhost:4182/#/relax');
+await page.clock.runFor(600);
+await page.getByRole('radio', { name: '2시간', exact: true }).click();
+await page.clock.runFor(300);
+check('relax timer offers 2시간', (await state()).settings.relaxMinutes === 120);
+await page.goto('http://localhost:4182/#/focus/ready');
+await page.clock.runFor(600);
+await page.getByRole('radio', { name: '2시간', exact: true }).click();
+await page.clock.runFor(300);
+check('focus quick time offers 2시간 (7200 s)', (await state()).settings.focusTimer.seconds === 7200);
+
 // ── Apps in Toss review rules that a browser can check
 await page.goto('http://localhost:4182/#/sleep');
 await page.clock.runFor(600);
@@ -418,6 +430,21 @@ await page.goto('http://localhost:4182/sleep');
 await page.clock.runFor(800);
 check('deep link path /sleep opens the sleep screen', (await page.evaluate(() => location.hash)) === '#/sleep', await page.evaluate(() => location.href));
 check('page title is the app name', (await page.title()) === '몰입각', await page.title());
+
+// ── Another React Native app's WebView (e.g. the Claude app) is not Toss: no Toss bridge messages
+{
+  const rn = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  rn.on('pageerror', (e) => errors.push(String(e)));
+  await rn.addInitScript(() => { window.__rnMessages = []; window.ReactNativeWebView = { postMessage: (m) => window.__rnMessages.push(m) }; });
+  await rn.goto('http://localhost:4182/#/focus/ready');
+  await rn.getByRole('button', { name: '집중 시작', exact: true }).click();
+  await rn.waitForTimeout(2500);
+  await rn.goto('http://localhost:4182/#/settings/audio');
+  await rn.waitForTimeout(800);
+  const sent = await rn.evaluate(() => window.__rnMessages.length);
+  check('inside another React Native WebView: no Toss bridge messages on taps, runs as a browser', sent === 0 && (await rn.getByText('브라우저', { exact: true }).count()) > 0, { sent });
+  await rn.close();
+}
 
 check('no page errors', errors.length === 0, errors);
 await browser.close();
