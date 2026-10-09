@@ -379,15 +379,25 @@ const results = await page.evaluate(async () => {
       // Ignore the first 0.5 s after the signal appears: the capture itself warms up there.
       const gaps = []; let run = 0, first = -1;
       for (let i = 0; i < l.length; i++) { const a = Math.abs(l[i]); if (a > 0.05 && first < 0) first = i; if (first < 0 || i < first + rate / 2) continue; if (a < 0.01) run++; else { if (run > rate * 0.002) gaps.push(Math.round(run / rate * 1000)); run = 0; } }
-      const g = (d, f) => { const a = 3 * rate, b = 6 * rate, k = 2 * Math.cos(2 * Math.PI * f / rate); let s1 = 0, s2 = 0; for (let i = a; i < b; i++) { const v = d[i] + k * s1 - s2; s2 = s1; s1 = v; } return Math.sqrt(s1 * s1 + s2 * s2 - k * s1 * s2) / (b - a); };
-      return { gaps, stereo: g(l, 400) > 20 * g(l, 410) && g(r, 410) > 20 * g(r, 400) };
+      const g = (d, f, a, b) => { const k = 2 * Math.cos(2 * Math.PI * f / rate); let s1 = 0, s2 = 0; for (let i = a; i < b; i++) { const v = d[i] + k * s1 - s2; s2 = s1; s1 = v; } return Math.sqrt(s1 * s1 + s2 * s2 - k * s1 * s2) / (b - a); };
+      // Each ear's own tone vs the other ear's (a mono path gives ≈1×), as the median over
+      // half-second windows: the captureStream + ScriptProcessor recording itself is a little rough.
+      const med = (v) => v.sort((x, y) => x - y)[Math.floor(v.length / 2)];
+      const lrs = [], rrs = [];
+      for (let t = first / rate + 0.5; t + 0.5 < l.length / rate; t += 0.5) {
+        const a = Math.floor(t * rate), b = Math.floor((t + 0.5) * rate);
+        lrs.push(g(l, 400, a, b) / g(l, 410, a, b));
+        rrs.push(g(r, 410, a, b) / g(r, 400, a, b));
+      }
+      const lr = med(lrs), rr = med(rrs);
+      return { gaps, lr: Math.round(lr), rr: Math.round(rr), stereo: lr > 10 && rr > 10 };
     };
     const wav = await record((el) => { el.loop = true; el.src = URL.createObjectURL(new Blob([encodeWav(tone)], { type: 'audio/wav' })); });
     check(`<audio loop> WAV (old way) pauses at every repeat: ${wav.gaps.length} gaps of ${wav.gaps.join('/')} ms in 7 s`, wav.gaps.length >= 2, wav);
     if (streamSupported()) {
       let s;
       const st = await record((el) => { s = new LoopStream(el, tone); el.src = s.url; return () => s.dispose(); });
-      check(`gapless stream: ${st.gaps.length} gaps in 7 s (3 repeats of a 2 s loop), each ear keeps its own tone`, st.gaps.length === 0 && st.stereo, st);
+      check(`gapless stream: ${st.gaps.length} gaps in 7 s (3 repeats of a 2 s loop), each ear keeps its own tone (L ${st.lr}× · R ${st.rr}×)`, st.gaps.length === 0 && st.stereo, st);
     } else {
       check('gapless stream supported in this browser (MSE audio/mp4 flac)', false, {});
     }
