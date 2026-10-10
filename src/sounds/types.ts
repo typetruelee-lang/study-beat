@@ -5,13 +5,13 @@ export type UseCase = 'focus' | 'sleep' | 'relax';
 /** Procedural recipes implemented in src/audio/ambient/synths.ts */
 export type SynthId =
   | 'white' | 'pink' | 'brown'
-  | 'rain' | 'softRain' | 'windowRain' | 'thunder'
-  | 'waves' | 'slowWaves' | 'lake'
+  | 'rain' | 'softRain'
+  | 'waves' | 'slowWaves'
   | 'wind' | 'mountainWind'
   | 'forest' | 'birds' | 'nightForest'
   | 'stream' | 'fire'
-  | 'cafe' | 'library' | 'train' | 'cityNight'
-  | 'fan' | 'deepRumble'
+  | 'train' | 'cityNight'
+  | 'deepRumble'
   | 'calmPad' | 'lullaby';
 
 /** Visual used by <SoundThumb>. */

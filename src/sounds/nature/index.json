@@ -1,7 +1,7 @@
 [
   {
     "id": "rain_01",
-    "name": "창가의 비",
+    "name": "처마 밑 빗소리",
     "emoji": "🌧",
     "category": "nature",
     "bus": "ambient",
@@ -107,8 +107,8 @@
   },
   {
     "id": "stream_01",
-    "name": "시냇물",
-    "emoji": "💧",
+    "name": "계곡물",
+    "emoji": "🏞",
     "category": "nature",
     "bus": "ambient",
     "useCases": [

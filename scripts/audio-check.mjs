@@ -238,9 +238,9 @@ const results = await page.evaluate(async () => {
     const N = 8192;
     const fft = (re, im) => { const n = re.length; for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } } for (let len = 2; len <= n; len <<= 1) { const a = -2 * Math.PI / len; for (let i = 0; i < n; i += len) for (let k = 0; k < len / 2; k++) { const c = Math.cos(a * k), s2 = Math.sin(a * k); const h = i + k + len / 2; const vr = re[h] * c - im[h] * s2, vi = re[h] * s2 + im[h] * c; re[h] = re[i + k] - vr; im[h] = im[i + k] - vi; re[i + k] += vr; im[i + k] += vi; } } };
     const targets = {
-      rain: { bass: 20, hiMin: 12, hiMax: 30, flat: 0.8 },
+      // 처마 밑 빗소리: soft rain + occasional drips (the drips are pitched, so less flat than plain rain)
+      rain: { bass: 35, hiMin: 3, hiMax: 25, flat: 0.35 },
       softRain: { bass: 35, hiMin: 5, hiMax: 30, flat: 0.5 },
-      windowRain: { bass: 30, hiMin: 6, hiMax: 30, flat: 0.5 },
     };
     for (const [id, t] of Object.entries(targets)) {
       const ctx = new OfflineAudioContext(2, SR * 26, SR);
@@ -271,6 +271,23 @@ const results = await page.evaluate(async () => {
       const pass = bass < t.bass && hi >= t.hiMin && hi <= t.hiMax && flat >= t.flat && rep < 0.1;
       check(`rain ${id}: bass ${bass.toFixed(1)}% · 4k+ ${hi.toFixed(1)}% · flatness ${flat.toFixed(2)} · loop repeat ${rep.toFixed(2)}`, pass, { t });
     }
+  }
+
+  // 3b') 계곡물: smooth flowing water — no sharp pops or bubbles (low crest factor, no isolated peaks)
+  {
+    const { startSynth } = await import('/src/audio/ambient/synths.ts');
+    const ctx = new OfflineAudioContext(2, SR * 20, SR);
+    startSynth(ctx, 'stream', ctx.destination);
+    const d = (await ctx.startRendering()).getChannelData(0);
+    let peak = 0, sq = 0, n = 0;
+    for (let i = 2 * SR; i < d.length; i++) { peak = Math.max(peak, Math.abs(d[i])); sq += d[i] * d[i]; n++; }
+    const crest = peak / Math.sqrt(sq / n);
+    // 5 ms windows: a bubble/pop is a window far louder than its neighbours
+    const w = SR / 200, e = [];
+    for (let i = 2 * SR; i + w < d.length; i += w) { let q = 0; for (let j = 0; j < w; j++) q += d[i + j] ** 2; e.push(Math.sqrt(q / w)); }
+    let pops = 0;
+    for (let i = 10; i < e.length - 10; i++) { let m = 0; for (let j = i - 10; j <= i + 10; j++) if (j !== i) m += e[j]; if (e[i] > 2.5 * (m / 20)) pops++; }
+    check(`stream (계곡물): crest ${crest.toFixed(1)}, pops ${pops} in 18 s — smooth flow, no bubbles`, crest < 6 && pops <= 2, { crest, pops });
   }
 
   // 3b) START-UP, every mode: the beat settles within 3 s and then holds steady (no dips/pumping)

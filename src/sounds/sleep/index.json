@@ -20,26 +20,6 @@
     }
   },
   {
-    "id": "thunder_01",
-    "name": "먼 천둥",
-    "emoji": "⛈",
-    "category": "sleep",
-    "bus": "ambient",
-    "useCases": [
-      "sleep"
-    ],
-    "loop": true,
-    "volume": 0.55,
-    "source": "synth",
-    "synth": "thunder",
-    "thumb": "rain",
-    "license": {
-      "name": "Original (procedural)",
-      "commercialUse": true,
-      "attributionRequired": false
-    }
-  },
-  {
     "id": "night_forest_01",
     "name": "밤의 숲",
     "emoji": "🦗",
@@ -73,27 +53,6 @@
     "source": "synth",
     "synth": "slowWaves",
     "thumb": "waves",
-    "license": {
-      "name": "Original (procedural)",
-      "commercialUse": true,
-      "attributionRequired": false
-    }
-  },
-  {
-    "id": "fan_01",
-    "name": "선풍기",
-    "emoji": "🌀",
-    "category": "sleep",
-    "bus": "ambient",
-    "useCases": [
-      "sleep",
-      "focus"
-    ],
-    "loop": true,
-    "volume": 0.55,
-    "source": "synth",
-    "synth": "fan",
-    "thumb": "fan",
     "license": {
       "name": "Original (procedural)",
       "commercialUse": true,

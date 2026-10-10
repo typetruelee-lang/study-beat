@@ -63,26 +63,7 @@ function wander(ctx: BaseAudioContext, param: AudioParam, key: string, depth: nu
   sources.push(src);
 }
 
-/** Periodic LFO (for mechanical things: fan blades). */
-function lfo(ctx: BaseAudioContext, param: AudioParam, rate: number, depth: number, sources: Sources) {
-  const osc = new OscillatorNode(ctx, { frequency: rate });
-  const g = new GainNode(ctx, { gain: depth });
-  osc.connect(g).connect(param);
-  osc.start();
-  sources.push(osc);
-}
-
 // ─── event buffers ───────────────────────────────────────────────────────────
-
-const drops = (ctx: BaseAudioContext, key: string, perSecond: number, fLo: number, fHi: number, decay: number, amp: number) =>
-  eventBuffer(ctx, `drops-${key}`, 6, (L, R, sr, rnd) => {
-    const n = Math.floor(perSecond * 6);
-    for (let i = 0; i < n; i++) {
-      const a = amp * (0.15 + 0.85 * rnd() ** 3);
-      const ev = ping(sr, rnd, fLo + rnd() * (fHi - fLo), decay * (0.6 + rnd() * 0.8), a, 0.5, 0.92);
-      addEvent(L, R, Math.floor(rnd() * (L.length - ev.length)), ev, rnd() * 1.6 - 0.8);
-    }
-  });
 
 /**
  * Rain impacts. Two layers with coprime loop lengths (7.3 s / 11.1 s) so the combined pattern
@@ -103,6 +84,20 @@ const rainHeavy = (ctx: BaseAudioContext, key: string, perSecond: number) =>
     for (let i = 0; i < n; i++) {
       const ev = impact(sr, rnd, 0.005 + rnd() * 0.012, 0.35 * (0.2 + 0.8 * rnd() ** 2), 0.18 + rnd() * 0.3, false);
       addEvent(L, R, Math.floor(rnd() * L.length), ev, rnd() * 1.4 - 0.7);
+    }
+  });
+
+/** Water dripping from the eaves into a puddle: sparse soft "plip"s (pitch rising a little, like a drop into water), sometimes two close together. */
+const eaveDrips = (ctx: BaseAudioContext) =>
+  eventBuffer(ctx, 'eaves', 13.7, (L, R, sr, rnd) => {
+    let t = 0.3;
+    while (t < 13.4) {
+      const n = rnd() < 0.25 ? 2 : 1;
+      for (let k = 0; k < n; k++) {
+        const ev = ping(sr, rnd, 650 + rnd() * 650, 0.018 + rnd() * 0.018, 0.22 + 0.28 * rnd(), 0.12, 1.35 + rnd() * 0.25);
+        addEvent(L, R, Math.floor((t + k * (0.12 + rnd() * 0.1)) * sr), ev, rnd() * 1.2 - 0.6);
+      }
+      t += 1 + rnd() * 2;
     }
   });
 
@@ -161,15 +156,6 @@ const crickets = (ctx: BaseAudioContext) =>
     }
   });
 
-const bubbles = (ctx: BaseAudioContext, key: string, perSecond: number, amp: number) =>
-  eventBuffer(ctx, `bubbles-${key}`, 10, (L, R, sr, rnd) => {
-    const n = Math.floor(perSecond * 10);
-    for (let i = 0; i < n; i++) {
-      const ev = ping(sr, rnd, 350 + rnd() * 900, 0.012 + rnd() * 0.02, amp * (0.2 + 0.8 * rnd() ** 2), 0.05, 1.6);
-      addEvent(L, R, Math.floor(rnd() * (L.length - ev.length)), ev, rnd() * 1.4 - 0.7);
-    }
-  });
-
 const trainClacks = (ctx: BaseAudioContext) =>
   eventBuffer(ctx, 'train', 8.8, (L, R, sr, rnd) => {
     for (let k = 0; k < 8; k++) {
@@ -181,58 +167,6 @@ const trainClacks = (ctx: BaseAudioContext) =>
         addEvent(L, R, pos, thump, -0.1);
         addEvent(L, R, pos, click, 0.1);
       }
-    }
-  });
-
-const thunder = (ctx: BaseAudioContext) =>
-  eventBuffer(ctx, 'thunder', 32, (L, R, sr, rnd) => {
-    for (const t of [5, 20]) {
-      const len = 7 + rnd() * 3;
-      const ev = burst(sr, rnd, len, 1.6, 0.004, 0.08);
-      addEvent(L, R, Math.floor(t * sr), ev, rnd() * 0.8 - 0.4);
-    }
-  });
-
-const cafeClinks = (ctx: BaseAudioContext) =>
-  eventBuffer(ctx, 'cafe-clinks', 24, (L, R, sr, rnd) => {
-    let t = 0.5;
-    while (t < 22.5) {
-      const f = 2200 + rnd() * 2600;
-      addEvent(L, R, Math.floor(t * sr), ping(sr, rnd, f, 0.06, 0.12, 0.1), rnd() * 1.6 - 0.8);
-      addEvent(L, R, Math.floor(t * sr), ping(sr, rnd, f * 2.7, 0.03, 0.05, 0), rnd() * 1.6 - 0.8);
-      t += 1.5 + rnd() * 5;
-    }
-  });
-
-/** Syllable-like amplitude envelope for the café murmur (mono control, 8 kHz). */
-const murmurEnvelope = (ctx: BaseAudioContext) =>
-  eventBuffer(ctx, 'murmur-env', 20, (L, R, sr, rnd) => {
-    for (let v = 0; v < 7; v++) {
-      let t = rnd() * 2;
-      while (t < 19.5) {
-        const talk = 1 + rnd() * 3;
-        for (let s = t; s < t + talk && s < 19.5; s += 0.12 + rnd() * 0.18) {
-          const dur = 0.08 + rnd() * 0.12;
-          const a = 0.3 + rnd() * 0.7;
-          const start = Math.floor(s * sr);
-          const n = Math.floor(dur * sr);
-          for (let i = 0; i < n && start + i < L.length; i++) {
-            const e = a * Math.sin((Math.PI * i) / n);
-            L[start + i] += e / 3;
-            R[start + i] += e / 3;
-          }
-        }
-        t += talk + 0.3 + rnd() * 1.5;
-      }
-    }
-  }, 8000);
-
-const pageFlips = (ctx: BaseAudioContext) =>
-  eventBuffer(ctx, 'pages', 30, (L, R, sr, rnd) => {
-    let t = 2;
-    while (t < 28) {
-      addEvent(L, R, Math.floor(t * sr), burst(sr, rnd, 0.25 + rnd() * 0.2, 0.12, 0.35, 0.3), rnd() * 1.6 - 0.8);
-      t += 4 + rnd() * 9;
     }
   });
 
@@ -312,26 +246,16 @@ const RECIPES: Record<SynthId, Recipe> = {
   pink: plainNoise('pink'),
   brown: plainNoise('brown'),
 
+  // 처마 밑 빗소리: gentle rain with water dripping now and then from the eaves into a puddle.
   rain: (ctx, out) => {
     const s: Sources = [];
-    rainLayers(ctx, out, s, { key: 'rain', lp: 9000, hiss: 0.5, body: 0.12, patter: 160, heavy: 22 });
+    rainLayers(ctx, out, s, { key: 'eaves', lp: 5000, hiss: 0.42, body: 0.14, patter: 45, heavy: 5 });
+    eventBed(ctx, eaveDrips(ctx), chain(filt(ctx, 'lowpass', 2600), out), 0.6, s);
     return s;
   },
   softRain: (ctx, out) => {
     const s: Sources = [];
     rainLayers(ctx, out, s, { key: 'soft', lp: 5500, hiss: 0.45, body: 0.16, patter: 60, heavy: 8 });
-    return s;
-  },
-  windowRain: (ctx, out) => {
-    const s: Sources = [];
-    rainLayers(ctx, out, s, { key: 'window', lp: 6500, hiss: 0.42, body: 0.16, patter: 70, heavy: 14 });
-    eventBed(ctx, drops(ctx, 'glass', 2, 700, 1600, 0.02, 0.5), chain(filt(ctx, 'bandpass', 1100, 0.8), out), 0.35, s); // soft "tok" on the glass
-    return s;
-  },
-  thunder: (ctx, out) => {
-    const s: Sources = [];
-    rainLayers(ctx, out, s, { key: 'storm', lp: 5000, hiss: 0.45, body: 0.2, patter: 70, heavy: 12 });
-    loop(ctx, thunder(ctx), chain(filt(ctx, 'lowpass', 160), out), 1, s);
     return s;
   },
 
@@ -351,14 +275,6 @@ const RECIPES: Record<SynthId, Recipe> = {
     wander(ctx, g.gain, 'swaves-gain', 0.42, 0.08, s);
     wander(ctx, lp.frequency, 'swaves-freq', 400, 0.08, s);
     loop(ctx, noiseBuffer(ctx, 'brown'), chain(filt(ctx, 'lowpass', 160), out), 0.45, s);
-    return s;
-  },
-  lake: (ctx, out) => {
-    const s: Sources = [];
-    const lp = filt(ctx, 'lowpass', 520);
-    const g = loop(ctx, noiseBuffer(ctx, 'pink'), chain(lp, out), 0.3, s);
-    wander(ctx, g.gain, 'lake', 0.15, 0.7, s); // gentle lapping: ~9 dB swing
-    loop(ctx, bubbles(ctx, 'lake', 4, 0.25), chain(filt(ctx, 'lowpass', 1800), out), 0.8, s);
     return s;
   },
 
@@ -402,12 +318,17 @@ const RECIPES: Record<SynthId, Recipe> = {
     return s;
   },
 
+  // 계곡물: water running softly over stones — a band of noise whose colour and level move quickly
+  // and irregularly, a gentle airy top and a low body. No pitched bubbles.
   stream: (ctx, out) => {
     const s: Sources = [];
-    const g = loop(ctx, noiseBuffer(ctx, 'white'), chain(filt(ctx, 'bandpass', 2000, 0.5), out), 0.16, s);
-    wander(ctx, g.gain, 'stream', 0.05, 0.6, s);
-    loop(ctx, bubbles(ctx, 'stream', 35, 0.3), out, 0.9, s);
-    loop(ctx, noiseBuffer(ctx, 'brown'), chain(filt(ctx, 'lowpass', 300), out), 0.25, s);
+    const bp = filt(ctx, 'bandpass', 800, 0.7);
+    const flow = noiseBed(ctx, 'pink', chain(bp, out), 0.55, s);
+    wander(ctx, bp.frequency, 'brook-colour', 350, 2.2, s);
+    wander(ctx, flow.gain, 'brook-level', 0.18, 1.6, s);
+    const air = noiseBed(ctx, 'white', chain(filt(ctx, 'bandpass', 2600, 0.9), filt(ctx, 'lowpass', 5000), out), 0.06, s);
+    wander(ctx, air.gain, 'brook-air', 0.025, 3, s);
+    noiseBed(ctx, 'brown', chain(filt(ctx, 'lowpass', 300), out), 0.3, s);
     return s;
   },
   fire: (ctx, out) => {
@@ -418,23 +339,6 @@ const RECIPES: Record<SynthId, Recipe> = {
     return s;
   },
 
-  cafe: (ctx, out) => {
-    const s: Sources = [];
-    const voices = new GainNode(ctx, { gain: 0 });
-    loop(ctx, noiseBuffer(ctx, 'pink'), chain(filt(ctx, 'bandpass', 550, 0.9), filt(ctx, 'lowpass', 1600), voices), 1, s);
-    voices.connect(out);
-    loop(ctx, murmurEnvelope(ctx), voices.gain, 0.9, s); // syllable envelope drives the level
-    loop(ctx, noiseBuffer(ctx, 'brown'), chain(filt(ctx, 'lowpass', 300), out), 0.3, s);
-    loop(ctx, cafeClinks(ctx), out, 1, s);
-    return s;
-  },
-  library: (ctx, out) => {
-    const s: Sources = [];
-    loop(ctx, noiseBuffer(ctx, 'brown'), chain(filt(ctx, 'lowpass', 260), out), 0.35, s);
-    loop(ctx, noiseBuffer(ctx, 'pink'), chain(filt(ctx, 'lowpass', 900), out), 0.06, s);
-    loop(ctx, pageFlips(ctx), chain(filt(ctx, 'bandpass', 2500, 0.6), out), 1, s);
-    return s;
-  },
   train: (ctx, out) => {
     const s: Sources = [];
     const g = loop(ctx, noiseBuffer(ctx, 'brown'), chain(filt(ctx, 'lowpass', 260), out), 0.75, s);
@@ -450,13 +354,6 @@ const RECIPES: Record<SynthId, Recipe> = {
     wander(ctx, g.gain, 'city-traffic', 0.35, 0.12, s);
     wander(ctx, lp.frequency, 'city-f', 300, 0.12, s);
     loop(ctx, noiseBuffer(ctx, 'pink'), chain(filt(ctx, 'lowpass', 1500), out), 0.05, s);
-    return s;
-  },
-  fan: (ctx, out) => {
-    const s: Sources = [];
-    const g = loop(ctx, noiseBuffer(ctx, 'pink'), chain(filt(ctx, 'lowpass', 1300), out), 0.6, s);
-    lfo(ctx, g.gain, 14, 0.04, s); // blade flutter
-    loop(ctx, noiseBuffer(ctx, 'brown'), chain(filt(ctx, 'lowpass', 220), out), 0.4, s);
     return s;
   },
   deepRumble: (ctx, out) => {
@@ -487,13 +384,13 @@ const RECIPES: Record<SynthId, Recipe> = {
  */
 const RAW_DB: Record<SynthId, number> = {
   white: -14.0, pink: -14.0, brown: -14.0,
-  rain: -20.9, softRain: -21.2, windowRain: -20.5, thunder: -20.6,
-  waves: -18.2, slowWaves: -18.3, lake: -26.2,
+  rain: -22.4, softRain: -21.2,
+  waves: -18.2, slowWaves: -18.3,
   wind: -22.0, mountainWind: -23.7,
   forest: -30.2, birds: -30.6, nightForest: -28.1,
-  stream: -23.5, fire: -17.7,
-  cafe: -23.2, library: -23.6, train: -17.1, cityNight: -17.6,
-  fan: -17.8, deepRumble: -12.9,
+  stream: -22.8, fire: -17.7,
+  train: -17.1, cityNight: -17.6,
+  deepRumble: -12.9,
   calmPad: -22.6, lullaby: -23.7,
 };
 export const TARGET_DB = (id: SynthId): number =>

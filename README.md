@@ -27,7 +27,7 @@ node scripts/build-preview.mjs [out.html] [web]  # 브라우저 미리보기용 
 |---|---|---|
 | 1 | 전체 UI/UX (Home·Focus·Sleep·Relax·Library·Mixer·Binaural·Timer·Result·Stats·Settings) | ✅ |
 | 2 | Binaural Beat 엔진 (L/R 분리, fade, ramp) | ✅ |
-| 3 | Ambient / Noise / Mixer (절차적 합성 25종 + 파일 교체 구조) | ✅ |
+| 3 | Ambient / Noise / Mixer (절차적 합성 19종 + 파일 교체 구조) | ✅ |
 | 4 | 타이머 (카운트다운·카운트업·목표, 시·분·초, 루틴, 수면 페이드 종료) | ✅ |
 | 5 | 집중시간 기록 (이탈 감지, 오늘/주/월/전체, 7일 그래프, 목표, 나무) | ✅ |
 | 5b | 자동 주파수 변화, 나의 루틴, 종료 방식 5종 | ✅ |
@@ -49,7 +49,7 @@ Anima: Binaural Beats와의 기능 비교와 차용 결정은 [docs/anima-compar
 
 ### 추천 사운드 · 강도 · 스피커용 · 내 믹스
 
-- **추천 사운드(레시피)** `src/sounds/recipes.ts`: 배경음 + 집중 사운드를 미리 묶은 11종(예: 카페 몰입 = 카페+핑크노이즈+12Hz). 한 탭으로 적용.
+- **추천 사운드(레시피)** `src/sounds/recipes.ts`: 배경음 + 집중 사운드를 미리 묶은 11종(예: 계곡 몰입 = 계곡물+핑크노이즈+12Hz). 한 탭으로 적용.
 - **강도**: 집중 사운드만 따로 줄이고 키우는 슬라이더(배경음 아래로 깔 수 있게).
 - **이어폰용 / 스피커용**: 이어폰용은 바이노럴 비트(좌우 다른 음), 스피커용은 아이소크로닉 톤(한 음을 규칙적으로 켜고 끔,
   `IsochronicTone.ts`). 연구 대부분은 바이노럴 비트 대상이며 아이소크로닉 톤 근거는 더 적다 — 앱은 효과를 주장하지 않는다.
@@ -123,7 +123,7 @@ src/
 현재 모든 소리는 기기에서 실시간 생성하는 자체 제작 사운드다(`license: Original (procedural)`).
 녹음 음원을 추가할 때는 `public/sounds/<category>/`에 파일을 두고 metadata를 `"source": "file"`로 바꾸며,
 `license.commercialUse`, `attributionRequired`, `attribution`을 반드시 채운다(누락 시 테스트 실패).
-합성으로 어색한 소리(카페 대화, 새소리, 기차)는 라이선스가 확인된 녹음으로 교체하는 것을 권장한다.
+합성으로 어색한 소리(새소리, 기차)는 라이선스가 확인된 녹음으로 교체하는 것을 권장한다.
 `src/sounds/README.md` 참고.
 
 ## 앱인토스 연동 (Phase 7)

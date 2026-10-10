@@ -291,11 +291,11 @@ await page.clock.runFor(400);
 await page.locator('.goal-card').getByRole('button', { name: /집중하기/ }).click();
 await page.clock.runFor(300);
 await page.getByRole('radio', { name: '50분' }).click();
-await page.getByRole('button', { name: '카페', exact: true }).click();
+await page.getByRole('button', { name: '장작불', exact: true }).click();
 await page.getByRole('button', { name: /켜짐 · \d+Hz/ }).click(); // focus sound off
 await page.clock.runFor(300);
 const readyText = await page.locator('.ready').innerText();
-check('ready screen: time, background sound and focus sound can be changed there', readyText.includes('50분 집중') && readyText.includes('카페') && !readyText.includes('집중 사운드'), readyText);
+check('ready screen: time, background sound and focus sound can be changed there', readyText.includes('50분 집중') && readyText.includes('장작불') && !readyText.includes('집중 사운드'), readyText);
 await page.getByRole('button', { name: /소리 섞기/ }).click();
 await page.clock.runFor(300);
 await page.getByRole('slider', { name: '전체 볼륨' }).fill('0.4');
@@ -306,17 +306,17 @@ await page.reload();
 await page.clock.runFor(1500);
 s = await state();
 check(
-  'choices are saved and restored after reopening (50 min, 카페, focus sound off, volume 40%)',
-  s.settings.focusTimer.seconds === 3000 && s.settings.tracksByMode.focus[0].id === 'cafe_01' && s.settings.binauralOnByMode.focus === false && s.settings.masterVolume === 0.4,
+  'choices are saved and restored after reopening (50 min, 장작불, focus sound off, volume 40%)',
+  s.settings.focusTimer.seconds === 3000 && s.settings.tracksByMode.focus[0].id === 'fire_01' && s.settings.binauralOnByMode.focus === false && s.settings.masterVolume === 0.4,
   { timer: s.settings.focusTimer, tracks: s.settings.tracksByMode.focus, binaural: s.settings.binauralOnByMode, master: s.settings.masterVolume },
 );
 check('restored choices show on the ready screen', (await page.locator('.ready').innerText()).includes('50분 집중'));
 await page.getByRole('button', { name: '집중 시작', exact: true }).click();
 await page.clock.runFor(1200);
 s = await state();
-check('session starts with the chosen options', s.session?.phases[0].seconds === 3000 && s.player.tracks[0].id === 'cafe_01' && !s.player.binauralOn, { phases: s.session?.phases, tracks: s.player.tracks, binaural: s.player.binauralOn });
+check('session starts with the chosen options', s.session?.phases[0].seconds === 3000 && s.player.tracks[0].id === 'fire_01' && !s.player.binauralOn, { phases: s.session?.phases, tracks: s.player.tracks, binaural: s.player.binauralOn });
 await page.getByRole('button', { name: /소리 바꾸기/ }).click();
-await page.getByRole('dialog', { name: '소리 바꾸기' }).getByRole('button', { name: '창가의 비', exact: true }).click();
+await page.getByRole('dialog', { name: '소리 바꾸기' }).getByRole('button', { name: '처마 밑 빗소리', exact: true }).click();
 await page.clock.runFor(600);
 s = await state();
 check('in-session sound change applies, is saved and recording continues', s.player.tracks[0].id === 'rain_01' && s.settings.tracksByMode.focus[0].id === 'rain_01' && s.session.status === 'running');
@@ -328,10 +328,10 @@ await page.clock.runFor(2000);
 // ── Anima-inspired additions: recipes, intensity, speaker mode, favorites
 await page.goto('http://localhost:4182/#/');
 await page.clock.runFor(500);
-await page.getByRole('button', { name: /^카페 몰입/ }).click();
+await page.getByRole('button', { name: /^계곡 몰입/ }).click();
 await page.clock.runFor(400);
 s = await state();
-check('home recipe "카페 몰입" loads its mix and opens the ready screen', (await page.evaluate(() => location.hash)) === '#/focus/ready' && s.player.tracks.map((t) => t.id).join(',') === 'cafe_01,noise_pink' && s.player.binauralOn && s.player.beat === 12, s.player);
+check('home recipe "계곡 몰입" loads its mix and opens the ready screen', (await page.evaluate(() => location.hash)) === '#/focus/ready' && s.player.tracks.map((t) => t.id).join(',') === 'stream_01,noise_pink' && s.player.binauralOn && s.player.beat === 12, s.player);
 await page.getByRole('radio', { name: /스피커용/ }).first().click();
 await page.getByRole('slider', { name: '강도' }).fill('0.5');
 await page.getByRole('button', { name: '집중 시작', exact: true }).click();
@@ -349,17 +349,17 @@ await page.clock.runFor(2000);
 await page.goto('http://localhost:4182/#/mixer');
 await page.clock.runFor(400);
 await page.getByRole('button', { name: '⭐ 이 믹스 저장' }).click();
-await page.getByRole('textbox', { name: '믹스 이름' }).fill('시험기간 카페');
+await page.getByRole('textbox', { name: '믹스 이름' }).fill('시험기간 계곡');
 await page.getByRole('button', { name: '저장', exact: true }).click();
 await page.clock.runFor(400);
 await page.evaluate(() => window.__fc.updateSettings((st) => ({ tracksByMode: { ...st.tracksByMode, focus: [{ id: 'rain_01', volume: 0.55 }] } })));
 await page.goto('http://localhost:4182/#/library');
 await page.reload();
 await page.clock.runFor(1200);
-await page.getByRole('button', { name: /^⭐ 시험기간 카페/ }).click();
+await page.getByRole('button', { name: /^⭐ 시험기간 계곡/ }).click();
 await page.clock.runFor(400);
 s = await state();
-check('favorite mix is saved, survives reload and loads with one tap', s.settings.favorites.length === 1 && s.player.tracks[0].id === 'cafe_01' && (await page.evaluate(() => location.hash)) === '#/focus/ready', { fav: s.settings.favorites, tracks: s.player.tracks });
+check('favorite mix is saved, survives reload and loads with one tap', s.settings.favorites.length === 1 && s.player.tracks[0].id === 'stream_01' && (await page.evaluate(() => location.hash)) === '#/focus/ready', { fav: s.settings.favorites, tracks: s.player.tracks });
 
 // ── The beat holds until the set time, screen on or off (25 min focus, sped up with the fake clock)
 await page.evaluate(() => window.__fc.updateSettings((st) => ({ awayDetection: false, autoFrequency: false, focusTimer: { ...st.focusTimer, kind: 'countdown', seconds: 25 * 60, routineId: null } })));

@@ -27,7 +27,7 @@ const at = (y: number, m: number, d: number, h = 10) => new Date(y, m - 1, d, h)
 const DATA: StudySession[] = [
   session({ startedAt: at(2026, 9, 30, 9), focusedSeconds: 25 * 60, ambientSound: 'rain_01', beatFrequency: 10 }),
   session({ startedAt: at(2026, 9, 30, 11), focusedSeconds: 50 * 60, interruptionCount: 2, resumeCount: 2, ambientSound: 'rain_01', beatFrequency: 10 }),
-  session({ startedAt: at(2026, 9, 29), focusedSeconds: 2 * H, ambientSound: 'cafe_01', beatFrequency: 12 }), // Tue
+  session({ startedAt: at(2026, 9, 29), focusedSeconds: 2 * H, ambientSound: 'fire_01', beatFrequency: 12 }), // Tue
   session({ startedAt: at(2026, 9, 28), focusedSeconds: 1 * H }), // Mon
   session({ startedAt: at(2026, 9, 27), focusedSeconds: 3 * H }), // Sun last week, still September
   session({ startedAt: at(2026, 8, 20), focusedSeconds: 5 * H }), // August
@@ -60,7 +60,7 @@ describe('stats', () => {
   });
 
   it('favourites weighted by focus time', () => {
-    expect(favourites(DATA)).toEqual({ sound: 'cafe_01', beat: 12 });
+    expect(favourites(DATA)).toEqual({ sound: 'fire_01', beat: 12 });
   });
 
   it('growth stage follows the daily goal', () => {

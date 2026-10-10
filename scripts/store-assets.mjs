@@ -105,7 +105,7 @@ const promo = (w, h, phones) => {
   <div class="copy">
     <img class="icon" src="${iconUri}">
     <h1>몰입각</h1>
-    <p>공부할 때 틀어두는 집중 사운드<br>빗소리·카페 + 타이머 + 기록</p>
+    <p>공부할 때 틀어두는 집중 사운드<br>빗소리·계곡물 + 타이머 + 기록</p>
   </div>
   <div class="phones">${phones.map((n) => `<img class="phone" src="${shots[n]}">`).join('')}</div>
 </body></html>`;

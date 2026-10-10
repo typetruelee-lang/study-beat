@@ -55,7 +55,7 @@ export function SoundLibrary() {
         options={[
           { value: 'all', label: '전체' },
           { value: 'nature', label: CATEGORY_LABELS.nature },
-          { value: 'cafe', label: '카페·공간' },
+          { value: 'cafe', label: '도시·공간' },
           { value: 'sleep', label: CATEGORY_LABELS.sleep },
           { value: 'noise', label: CATEGORY_LABELS.noise },
           { value: 'meditation', label: CATEGORY_LABELS.meditation },

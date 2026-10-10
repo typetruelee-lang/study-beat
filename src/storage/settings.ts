@@ -1,4 +1,4 @@
-import { DEFAULT_TRACKS } from '../sounds/catalog';
+import { DEFAULT_TRACKS, getSound } from '../sounds/catalog';
 import type { UseCase } from '../sounds/types';
 import type { BeatKind } from '../audio/types';
 import { readJson, type KeyValueStore } from './KeyValueStore';
@@ -115,14 +115,25 @@ export function mergeSettings(saved: (Partial<Settings> & { keepScreenOn?: boole
   const { keepScreenOn: _legacy, ...rest } = saved;
   void _legacy;
   saved = rest;
+  // Sounds can be retired in an update: drop them from saved mixes (a mode left empty gets its default).
+  const known = (tracks: TrackSetting[] = []) => tracks.filter((t) => getSound(t.id));
+  const tracksByMode = { ...d.tracksByMode, ...saved.tracksByMode };
+  for (const mode of Object.keys(tracksByMode) as UseCase[]) {
+    const kept = known(tracksByMode[mode]);
+    tracksByMode[mode] = kept.length ? kept : d.tracksByMode[mode];
+  }
+  const favorites = (saved.favorites ?? d.favorites)
+    .map((f) => ({ ...f, tracks: known(f.tracks) }))
+    .filter((f) => f.tracks.length > 0 || f.binauralOn);
   return {
     ...d,
     ...saved,
+    favorites,
     version: 1,
     beatByMode: { ...d.beatByMode, ...saved.beatByMode },
     binauralOnByMode: { ...d.binauralOnByMode, ...saved.binauralOnByMode },
     busVolumes: { ...d.busVolumes, ...saved.busVolumes },
-    tracksByMode: { ...d.tracksByMode, ...saved.tracksByMode },
+    tracksByMode,
     focusTimer: { ...d.focusTimer, ...saved.focusTimer },
     keepScreenOnByMode: { ...d.keepScreenOnByMode, ...legacyAwake, ...saved.keepScreenOnByMode },
     dimByMode: { ...d.dimByMode, ...saved.dimByMode },

@@ -9,4 +9,4 @@
 .sound-tile__name { font-weight: 750; font-size: 16px; line-height: 1.25; }
 .sound-tile__meta { font-size: 13px; color: var(--ink-faint); }
 .sound-tile__check { position: absolute; top: 6px; right: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 13px; display: grid; place-items: center; }
-.mix-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.mix-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }

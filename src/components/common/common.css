@@ -45,10 +45,15 @@
 }
 
 /* Slider */
-.slider { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; min-height: var(--touch); }
-.slider__label { font-size: var(--t-small); font-weight: 650; min-width: 72px; }
-.slider__value { font-size: var(--t-small); color: var(--ink-soft); min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
+.slider {
+  /* Name and value on top, the track below across the full width (wide enough to set precisely on a phone). */
+  display: grid; grid-template-columns: 1fr auto; grid-template-areas: 'label value' 'range range';
+  align-items: center; column-gap: 12px; row-gap: 0; min-width: 0;
+}
+.slider__label { grid-area: label; font-size: var(--t-small); font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slider__value { grid-area: value; font-size: var(--t-small); color: var(--ink-soft); min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
 .slider input[type='range'] {
+  grid-area: range;
   -webkit-appearance: none; appearance: none; width: 100%; height: 44px; background: transparent; margin: 0;
   --pct: 50%;
 }
