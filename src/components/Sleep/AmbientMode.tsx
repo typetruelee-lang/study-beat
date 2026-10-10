@@ -7,7 +7,7 @@ import type { UseCase } from '../../sounds/types';
 import { ClayButton } from '../common/ClayButton';
 import { ChipGroup } from '../common/Chip';
 import { ScreenHeader } from '../common/ScreenHeader';
-import { ScreenControlsButton } from '../Screen/ScreenControls';
+import { DarkButton, ScreenControlsButton } from '../Screen/ScreenControls';
 import { SoundPicks } from '../SoundLibrary/SoundPicks';
 import { RecipeRow } from '../Recipes/RecipeRow';
 import '../Focus/focus.css';
@@ -55,6 +55,7 @@ export function AmbientMode({
           <p className="big-time big-time--xl">{view.bigTime}</p>
           <p className="session-status">{view.status}</p>
           {view.sub && <p className="center muted">{view.sub}</p>}
+          {running && <DarkButton mode={mode} />}
         </div>
       ) : (
         <p className="sound-line">{summary}</p>

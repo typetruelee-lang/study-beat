@@ -10,6 +10,8 @@ import { isInToss } from './platform/toss';
 import { setupTossNavigation } from './platform/tossNavigation';
 import { applyDeepLink } from './platform/deeplink';
 import { initBannerAds } from './platform/tossAds';
+import { getState } from './app/store';
+import { closeCurtain } from './app/actions';
 import './design/global.css';
 import { SKIN } from './app/skin';
 
@@ -30,8 +32,9 @@ configureServices(isInToss() ? new AitStorageKV() : new LocalStorageKV(), create
 
 safely(() =>
   setupTossNavigation(
-    () => ['', '#', '#/'].includes(location.hash),
-    () => history.back(),
+    // Back while the dark screen is up only brings the app back (never closes it).
+    () => !getState().curtain && ['', '#', '#/'].includes(location.hash),
+    () => (getState().curtain ? closeCurtain() : history.back()),
   ),
 );
 

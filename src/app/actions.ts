@@ -83,12 +83,15 @@ function syncMediaSession() {
 
 // ─── screen: keep awake, dim, black screen ───────────────────────────────────
 
-/** Keep the display on when the active mode wants it, or always while the black screen is up. */
+/**
+ * Keep the display on while something plays and either the dark screen is up, auto-dark is on
+ * (it has to stay on until the dark screen takes over) or the mode asks for it.
+ */
 export function applyAwake() {
   const { session, player, settings, curtain } = getState();
   const mode = session?.mode ?? player.mode;
   const active = session ? session.status === 'running' : player.playing;
-  void setKeepScreenOn(curtain || (active && settings.keepScreenOnByMode[mode]));
+  void setKeepScreenOn(active && (curtain || settings.autoDarkMinutes != null || settings.keepScreenOnByMode[mode]));
 }
 
 export function setKeepAwakeFor(mode: UseCase, on: boolean) {
@@ -97,12 +100,21 @@ export function setKeepAwakeFor(mode: UseCase, on: boolean) {
 }
 
 export function setDimFor(mode: UseCase, dim: number) {
-  updateSettings((s) => ({ dimByMode: { ...s.dimByMode, [mode]: clamp(dim, 0, 0.85) } }));
+  updateSettings((s) => ({ dimByMode: { ...s.dimByMode, [mode]: clamp(dim, 0, 0.95) } }));
 }
 
 export function openCurtain() {
-  setState({ curtain: true });
+  setState({ curtain: true, screenOffTip: false });
   applyAwake();
+}
+
+export function setAutoDark(minutes: number | null) {
+  updateSettings({ autoDarkMinutes: minutes });
+  applyAwake();
+}
+
+export function dismissScreenOffTip() {
+  setState({ screenOffTip: false });
 }
 
 export function closeCurtain() {
@@ -211,7 +223,7 @@ export async function play() {
 }
 
 export async function stopPlayback() {
-  setState((s) => ({ player: { ...s.player, playing: false } }));
+  setState((s) => ({ player: { ...s.player, playing: false }, curtain: false, screenOffTip: false }));
   applyAwake();
   await services.audio.stopAll(1.2);
   if (!getState().player.playing) setPrewarmPaused(false);
@@ -562,6 +574,8 @@ function handleVisibility(visible: boolean) {
     return;
   }
   resetWakeLock();
+  // Sound stopped while the screen was off (the host paused it): suggest the dark screen.
+  if (services.audio.takeAwayReport()?.stopped && getState().player.playing) setState({ screenOffTip: true });
   if (getState().player.playing) void services.audio.ensureRunning();
   if (session) handleTick();
   applyAwake();

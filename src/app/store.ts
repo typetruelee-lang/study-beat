@@ -23,8 +23,10 @@ export interface AppState {
   session: SessionState | null;
   /** Id of the most recently saved focus session (for the result screen). */
   lastResult: StudySession | null;
-  /** Black screen (screen "off" while the app keeps playing and recording). */
+  /** Dark screen (looks off while the app keeps playing and recording). */
   curtain: boolean;
+  /** The sound stopped while the screen was off: show the "어둡게 두기" tip. */
+  screenOffTip: boolean;
 }
 
 export function playerFor(settings: Settings, mode: UseCase, playing = false): PlayerState {
@@ -46,6 +48,7 @@ let state: AppState = {
   session: null,
   lastResult: null,
   curtain: false,
+  screenOffTip: false,
 };
 
 const listeners = new Set<() => void>();

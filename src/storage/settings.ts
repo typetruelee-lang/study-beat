@@ -34,12 +34,16 @@ export interface Settings {
   relaxMinutes: number;
   dailyGoalMinutes: number;
   awayDetection: boolean;
-  /** Keep the display awake while this mode plays (off = device auto-lock turns it off). */
+  /** Keep the display awake while this mode plays (off = the device turns it off on its own timer). */
   keepScreenOnByMode: Record<UseCase, boolean>;
-  /** In-app dimming 0 (none) … 0.85, per mode. The system brightness cannot be changed. */
+  /** In-app dimming 0 (none) … 0.95, per mode. The system brightness cannot be changed. */
   dimByMode: Record<UseCase, number>;
-  /** Enter the black screen after this many idle minutes while playing; null = off. */
-  autoCurtainMinutes: number | null;
+  /**
+   * Go dark (black screen, app stays in front) after this many idle minutes while playing;
+   * null = off. While on, the display is kept awake until then: a phone that turns its screen
+   * off can stop the sound (the Toss WebView does).
+   */
+  autoDarkMinutes: number | null;
   /** Route output through a media element so playback can continue with the screen off. */
   backgroundPlayback: boolean;
   endSound: EndSound;
@@ -81,7 +85,7 @@ export const DEFAULT_SETTINGS: Settings = {
   awayDetection: true,
   keepScreenOnByMode: { focus: true, sleep: false, relax: false },
   dimByMode: { focus: 0, sleep: 0, relax: 0 },
-  autoCurtainMinutes: null,
+  autoDarkMinutes: 1,
   backgroundPlayback: true,
   endSound: 'bell',
   autoFrequency: false,

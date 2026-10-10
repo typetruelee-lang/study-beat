@@ -19,6 +19,15 @@ const check = (name, pass, detail = '') => {
   console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${pass ? '' : '  ' + JSON.stringify(detail)}`);
 };
 const state = () => page.evaluate(() => window.__fc.getState());
+// Slide the dark screen's knob to the end of its track.
+const slideBack = async (p = page) => {
+  const knob = await p.locator('.slide__knob').boundingBox();
+  const track = await p.locator('.slide').boundingBox();
+  await p.mouse.move(knob.x + knob.width / 2, knob.y + knob.height / 2);
+  await p.mouse.down();
+  await p.mouse.move(track.x + track.width - 10, knob.y + knob.height / 2, { steps: 8 });
+  await p.mouse.up();
+};
 // A really hidden page draws no frames; the engine checks that after "hidden" (its frame source is
 // switched off here, unless `frames` simulates an in-app browser that says hidden while on screen).
 const setVisible = (visible, { frames = false } = {}) =>
@@ -37,6 +46,10 @@ await page.clock.install({ time: new Date(2026, 8, 30, 14, 0, 0) });
 await page.goto('http://localhost:4182/');
 await page.clock.runFor(1000);
 await page.getByText('몰입각').first().waitFor();
+await page.waitForFunction(() => !!window.__fc);
+check('auto dark screen is on by default (1 minute)', (await state()).settings.autoDarkMinutes === 1);
+// The long runs below use the fake clock; the dark screen would cover the buttons. Tested on its own further down.
+await page.evaluate(() => window.__fc.updateSettings({ autoDarkMinutes: null }));
 
 // ── Home → focus in two taps
 let taps = 0;
@@ -262,25 +275,35 @@ await page.getByRole('slider', { name: '화면 밝기' }).fill('0.5');
 await page.clock.runFor(300);
 const dim = await page.getByTestId('dim-overlay').evaluate((el) => Number(el.style.opacity));
 check('brightness 50% dims the app screen by half', Math.abs(dim - 0.5) < 0.01, dim);
-await page.getByRole('button', { name: '검은 화면으로 두기' }).click();
+await page.getByRole('button', { name: '🌙 지금 어둡게 두기' }).click();
 await page.clock.runFor(300);
-check('black screen is shown', await page.locator('.curtain').isVisible());
+check('dark screen is shown', await page.locator('.curtain').isVisible());
 const f0 = (await state()).session.focusedMs;
 await page.clock.fastForward('02:00');
 await page.clock.runFor(1200);
 s = await state();
-check('focus keeps recording and sound keeps playing under the black screen', s.session.focusedMs - f0 >= 119_000 && s.player.playing, s.session.focusedMs - f0);
+check('focus keeps recording and sound keeps playing under the dark screen', s.session.focusedMs - f0 >= 119_000 && s.player.playing, s.session.focusedMs - f0);
 await page.locator('.curtain').dblclick();
+await page.locator('.curtain').click({ delay: 900 });
+await page.mouse.move(60, 400);
+await page.mouse.down();
+await page.mouse.move(330, 400, { steps: 8 });
+await page.mouse.up();
 await page.clock.runFor(300);
-check('double tap leaves the black screen', !(await page.locator('.curtain').isVisible()));
+check('taps, long presses and swipes on the dark screen do nothing (pocket-safe)', await page.locator('.curtain').isVisible());
+await slideBack();
+await page.clock.runFor(300);
+check('sliding the knob to the end brings the app back', !(await page.locator('.curtain').isVisible()));
 await page.getByRole('button', { name: '화면 설정' }).click();
 await page.getByRole('radio', { name: '1분' }).click();
 await page.keyboard.press('Escape');
 await page.clock.runFor(300);
 await page.clock.fastForward('01:05');
 await page.clock.runFor(600);
-check('auto black screen after 1 idle minute', await page.locator('.curtain').isVisible());
-await page.locator('.curtain').dblclick();
+check('auto dark screen after 1 idle minute', await page.locator('.curtain').isVisible());
+await page.locator('.curtain').click();
+await slideBack();
+await page.evaluate(() => window.__fc.updateSettings({ autoDarkMinutes: null }));
 await page.getByRole('button', { name: '■ 종료' }).click();
 await page.getByRole('button', { name: '종료하고 기록하기' }).click();
 await page.clock.runFor(2000);
@@ -406,6 +429,31 @@ check('소리 진단 screen shows the route and the recovery', (await page.getBy
 await page.evaluate(() => window.__fc.endSessionEarly());
 await page.clock.runFor(2000);
 
+// ── The system stops the sound while the screen is off → back in the app, suggest the dark screen
+await page.goto('http://localhost:4182/#/relax');
+await page.clock.runFor(600);
+await page.getByRole('button', { name: '▶ 재생' }).click();
+await page.clock.runFor(1500);
+await waitLoop();
+check('relax playback screen offers 🌙 어둡게 두기', (await page.getByRole('button', { name: /어둡게 두기/ }).count()) === 1);
+await setVisible(false);
+await page.clock.runFor(1000);
+await page.evaluate(() => window.__fc.audio().bgEl.pause()); // what the Toss WebView does to the sound
+await page.clock.fastForward('00:30');
+await setVisible(true);
+await page.clock.runFor(600);
+check(
+  'sound stopped while the screen was off: tip suggests the dark screen',
+  (await page.getByRole('dialog', { name: '화면이 꺼진 동안 소리가 멈췄어요' }).count()) === 1 && (await page.evaluate(() => window.__fc.audio().diagnostics().events.some((e) => e.msg.startsWith('화면이 꺼진 동안 소리가 멈춤')))),
+);
+await page.getByRole('button', { name: '🌙 지금 어둡게 두기' }).click();
+await page.clock.runFor(300);
+check('tip → dark screen, sound still playing', (await page.locator('.curtain').isVisible()) && (await state()).player.playing);
+await page.keyboard.press('Escape');
+await page.clock.runFor(300);
+await page.getByRole('button', { name: '■ 끄기' }).click();
+await page.clock.runFor(2000);
+
 // ── Times up to 2 hours: relax 2시간 chip, focus 2시간 chip
 await page.goto('http://localhost:4182/#/relax');
 await page.clock.runFor(600);
@@ -444,6 +492,25 @@ check('page title is the app name', (await page.title()) === '몰입각', await 
   const sent = await rn.evaluate(() => window.__rnMessages.length);
   check('inside another React Native WebView: no Toss bridge messages on taps, runs as a browser', sent === 0 && (await rn.getByText('브라우저', { exact: true }).count()) > 0, { sent });
   await rn.close();
+}
+
+// ── Default settings: playing sleep sound keeps the display on (until it goes dark), stopping lets it sleep
+{
+  const wp = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  wp.on('pageerror', (e) => errors.push(String(e)));
+  await wp.addInitScript(() => {
+    window.__wake = [];
+    Object.defineProperty(navigator, 'wakeLock', { value: { request: async () => { window.__wake.push('on'); return { release: async () => window.__wake.push('off') }; } } });
+  });
+  await wp.goto('http://localhost:4182/#/sleep');
+  await wp.getByRole('button', { name: '▶ 재생' }).click();
+  await wp.waitForTimeout(1500);
+  const during = await wp.evaluate(() => window.__wake.join(','));
+  await wp.getByRole('button', { name: '■ 끄기' }).click();
+  await wp.waitForTimeout(1500);
+  const after = await wp.evaluate(() => window.__wake.join(','));
+  check('sleep sound with default settings: display kept on while playing, released after stop', during === 'on' && after === 'on,off', { during, after });
+  await wp.close();
 }
 
 // ── Toss banner ads: only with the ad SDK the Toss app injects, only on home and stats, never on playback screens

@@ -65,7 +65,7 @@ export function Settings() {
         />
         <ToggleRow
           title="화면 꺼져도 재생"
-          description="화면이 꺼지거나 다른 앱으로 가도 지금 믹스를 음원 파일로 이어서 재생해요(이어폰 좌우 그대로). 기기 정책에 따라 멈출 수 있어요. 확실하게 들으려면 검은 화면을 쓰세요."
+          description="화면이 꺼지거나 다른 앱으로 가도 지금 믹스를 음원 파일로 이어서 재생해요(이어폰 좌우 그대로). 기기 정책에 따라 멈출 수 있어요. 확실하게 들으려면 화면을 끄는 대신 🌙 어둡게 두기를 쓰세요."
           checked={s.backgroundPlayback}
           onChange={setBackgroundPlayback}
         />

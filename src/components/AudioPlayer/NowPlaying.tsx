@@ -6,7 +6,7 @@ import { getState, useAppState } from '../../app/store';
 import { getSound } from '../../sounds/catalog';
 import { ClayButton } from '../common/ClayButton';
 import { ScreenHeader } from '../common/ScreenHeader';
-import { ScreenControlsButton } from '../Screen/ScreenControls';
+import { DarkButton, ScreenControlsButton } from '../Screen/ScreenControls';
 import { RelaxScene } from '../scenes/RelaxScene';
 import { SleepScene } from '../scenes/SleepScene';
 import { StudyScene } from '../scenes/StudyScene';
@@ -57,6 +57,7 @@ export function NowPlaying() {
         })}
       </section>
 
+      {running && <DarkButton mode={player.mode} />}
       <div className="session-controls">
         <ClayButton
           size="lg"

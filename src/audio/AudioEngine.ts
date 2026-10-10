@@ -23,7 +23,7 @@ import { LoopStream, streamSupported } from './backgroundStream';
 import { createCarve, setCarve } from './carve';
 import { playChime } from './chime';
 import { rampTo, sliderToGain } from './ramp';
-import type { AudioDiagnostics, AudioPort, BeatKind, BinauralParams, Bus } from './types';
+import type { AudioDiagnostics, AudioPort, AwayReport, BeatKind, BinauralParams, Bus } from './types';
 
 export interface TrackSource {
   stop(fadeSeconds: number): void;
@@ -46,6 +46,8 @@ export type ContextFactory = () => BaseAudioContext;
 /** Wait this long after the last mix change before rendering the screen-off loop. */
 const RENDER_DEBOUNCE_MS = 1000;
 const MAX_EVENTS = 40;
+/** Shorter trips away are not reported (a quick glance at another app). */
+const AWAY_REPORT_MS = 15_000;
 
 export class WebAudioEngine implements AudioPort {
   private ctx: BaseAudioContext | null = null;
@@ -81,6 +83,9 @@ export class WebAudioEngine implements AudioPort {
   private bgUrl: string | null = null;
   private bgStream: LoopStream | null = null;
   private hiddenCheck: ReturnType<typeof setTimeout> | null = null;
+  /** Hidden with sound on: since when, and whether the system cut the sound meanwhile. */
+  private away: { at: number; stopped: boolean } | null = null;
+  private awayReport: AwayReport | null = null;
   /** Frame source for the "really hidden?" check (replaceable in checks). */
   requestFrame: (cb: () => void) => void = (cb) => requestAnimationFrame(cb);
   private mixVersion = 0;
@@ -135,7 +140,12 @@ export class WebAudioEngine implements AudioPort {
     this.buses.binaural.connect(this.master);
     this.buses.ambient.connect(this.carve);
     this.buses.noise.connect(this.carve);
-    if (isLive(ctx)) ctx.onstatechange = () => this.log(`오디오 상태: ${ctx.state}`);
+    if (isLive(ctx))
+      ctx.onstatechange = () => {
+        this.log(`오디오 상태: ${ctx.state}`);
+        // Only the background route suspends the live graph on purpose.
+        if (this.away && this.hidden && this.soundOn && this.route === 'direct' && ctx.state !== 'running') this.away.stopped = true;
+      };
     return ctx;
   }
 
@@ -176,6 +186,8 @@ export class WebAudioEngine implements AudioPort {
   setAppHidden(hidden: boolean) {
     this.hidden = hidden;
     this.log(hidden ? '화면 꺼짐/다른 앱' : '앱으로 돌아옴');
+    if (hidden) this.away = this.soundOn ? { at: Date.now(), stopped: false } : null;
+    else this.closeAway();
     if (this.hiddenCheck) clearTimeout(this.hiddenCheck);
     this.hiddenCheck = null;
     if (hidden && typeof requestAnimationFrame === 'function') {
@@ -192,6 +204,7 @@ export class WebAudioEngine implements AudioPort {
         if (this.hidden && frames >= 10) {
           this.log('숨김 신호 무시 (화면이 계속 그려짐)');
           this.hidden = false;
+          this.away = null;
           this.applyRoute();
         }
       }, 800);
@@ -218,6 +231,7 @@ export class WebAudioEngine implements AudioPort {
       // Paused by the system while it carries the sound → go back to the live output.
       el.addEventListener('pause', () => {
         if (this.route === 'background' && this.soundOn) {
+          if (this.away && this.hidden) this.away.stopped = true;
           this.bgBlocked = true;
           this.applyRoute();
         }
@@ -422,6 +436,23 @@ export class WebAudioEngine implements AudioPort {
       }
     }
     if (this.backgroundOutput) await this.playElement();
+  }
+
+  /** Back from the background: did the sound keep playing? (checked before the route switches back) */
+  private closeAway() {
+    const away = this.away;
+    this.away = null;
+    if (!away) return;
+    const hiddenMs = Date.now() - away.at;
+    const stopped = hiddenMs >= AWAY_REPORT_MS && (away.stopped || (this.route === 'background' && !!this.bgEl?.paused));
+    if (stopped) this.log(`화면이 꺼진 동안 소리가 멈춤 (${Math.round(hiddenMs / 1000)}초 중)`);
+    this.awayReport = { hiddenMs, stopped };
+  }
+
+  takeAwayReport(): AwayReport | null {
+    const r = this.awayReport;
+    this.awayReport = null;
+    return r;
   }
 
   // ─── diagnostics ───────────────────────────────────────────────────────────

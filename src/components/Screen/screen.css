@@ -5,15 +5,35 @@
 
 .curtain {
   position: fixed; inset: 0; z-index: 200; background: #000; color: #5b5b66;
-  touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer;
+  touch-action: none; user-select: none; -webkit-user-select: none;
   animation: fade-in 0.6s ease;
 }
 .curtain__info {
   position: absolute; left: 50%; display: flex; flex-direction: column; align-items: center; gap: 6px;
-  transform: translateX(-50%); transition: top 2s ease; text-align: center;
+  transform: translateX(-50%); transition: top 2s ease, opacity 0.8s ease; text-align: center;
 }
-.curtain__clock { font-size: 44px; font-weight: 300; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: #3f3f48; }
-.curtain__status { font-size: 15px; color: #3a3a42; }
-.curtain__hint { font-size: 14px; color: #6b6b76; transition: opacity 1s ease; }
+.curtain__clock { font-size: 44px; font-weight: 300; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; color: #4a4a54; }
+.curtain__status { font-size: 15px; color: #45454e; }
+.curtain__bottom {
+  position: absolute; left: 0; right: 0; bottom: calc(48px + var(--safe-bottom, 0px));
+  display: flex; flex-direction: column; align-items: center; gap: 12px; transition: opacity 0.8s ease;
+}
+.curtain__hint { font-size: 13px; color: #4a4a54; }
+
+/* Slide to come back: only a deliberate drag of the knob to the end works. */
+.slide {
+  position: relative; width: min(300px, calc(100vw - 64px)); height: 60px; border-radius: 30px;
+  background: #141418; border: 1px solid #23232a; display: grid; place-items: center;
+}
+.slide__label { font-size: 15px; color: #6b6b76; letter-spacing: 0.02em; pointer-events: none; }
+.slide__knob {
+  position: absolute; left: 4px; top: 4px; width: 52px; height: 52px; border-radius: 50%;
+  background: #2b2b33; color: #9a9aa6; display: grid; place-items: center; font-size: 28px; line-height: 1;
+  touch-action: none; cursor: grab; transition: transform 0.3s ease;
+}
+
+/* Under the dark screen nothing needs to move: stop the decorative animations. */
+.app-root.is-dark > :not(.curtain),
+.app-root.is-dark > :not(.curtain) * { animation-play-state: paused !important; }
 
 .screen-sheet__row { display: flex; flex-direction: column; gap: 6px; }

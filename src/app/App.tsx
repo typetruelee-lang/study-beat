@@ -20,7 +20,8 @@ import { MiniPlayer } from '../components/AudioPlayer/MiniPlayer';
 import { TabBar } from '../components/AudioPlayer/TabBar';
 import { AwaySheet } from '../components/Session/AwaySheet';
 import { DimOverlay } from '../components/Screen/DimOverlay';
-import { ScreenCurtain, useAutoCurtain } from '../components/Screen/ScreenCurtain';
+import { ScreenCurtain, useAutoDark } from '../components/Screen/ScreenCurtain';
+import { ScreenOffTip } from '../components/Screen/ScreenOffTip';
 import { Splash } from './Splash';
 import { initApp } from './actions';
 import { IS_WEB_SKIN } from './skin';
@@ -40,7 +41,11 @@ function Shell() {
   const dark = pathname.startsWith('/sleep') || (pathname === '/now' && mode === 'sleep') || (pathname === '/mixer' && sessionMode === 'sleep');
   const showTabs = TAB_ROUTES.includes(pathname);
   const reduceMotion = useAppState((s) => s.settings.reduceMotion);
-  useAutoCurtain();
+  const curtain = useAppState((s) => s.curtain);
+  const playing = useAppState((s) => s.player.playing);
+  // The sleep / relax screens have their own pause and stop buttons for their own sound.
+  const ownControls = (pathname === '/sleep' || pathname === '/relax') && (sessionMode ?? (playing ? mode : null)) === pathname.slice(1);
+  useAutoDark();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -52,7 +57,7 @@ function Shell() {
   }, [dark]);
 
   return (
-    <div className={`app-root ${dark ? 'theme-sleep' : ''}`} data-reduce-motion={reduceMotion}>
+    <div className={`app-root ${dark ? 'theme-sleep' : ''} ${curtain ? 'is-dark' : ''}`} data-reduce-motion={reduceMotion}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/focus" element={<FocusSetup />} />
@@ -72,9 +77,10 @@ function Shell() {
         <Route path="/now" element={<NowPlaying />} />
         <Route path="*" element={<Home />} />
       </Routes>
-      {!NO_MINI.includes(pathname) && <MiniPlayer aboveTabs={showTabs} />}
+      {!NO_MINI.includes(pathname) && !ownControls && <MiniPlayer aboveTabs={showTabs} />}
       {showTabs && <TabBar />}
       <AwaySheet />
+      <ScreenOffTip />
       <DimOverlay />
       <ScreenCurtain />
     </div>

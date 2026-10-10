@@ -7,7 +7,7 @@ import { formatDuration } from '../../lib/format';
 import { ClayButton } from '../common/ClayButton';
 import { ScreenHeader } from '../common/ScreenHeader';
 import { Ring } from '../common/Ring';
-import { ScreenControlsButton } from '../Screen/ScreenControls';
+import { DarkButton, ScreenControlsButton } from '../Screen/ScreenControls';
 import { Sheet } from '../common/Sheet';
 import { StudyScene } from '../scenes/StudyScene';
 import { Waveform } from '../AudioPlayer/Waveform';
@@ -67,6 +67,7 @@ export function FocusSession() {
       </Sheet>
 
       <p className="center small faint">다른 앱을 사용하지 않고 집중을 계속해보세요.</p>
+      {running && <DarkButton mode="focus" />}
 
       <div className="session-controls">
         <ClayButton size="lg" onClick={() => (running ? pauseSession('user') : resumeSession())}>

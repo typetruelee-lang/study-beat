@@ -67,6 +67,13 @@ export interface AudioPort {
   diagnostics(): AudioDiagnostics;
   /** Record that the app had to restore the sound (shown in diagnostics). */
   noteRecovery(what: string): void;
+  /** After coming back: how long the app was away and whether the system stopped the sound meanwhile (read once). */
+  takeAwayReport(): AwayReport | null;
+}
+
+export interface AwayReport {
+  hiddenMs: number;
+  stopped: boolean;
 }
 
 export interface AudioDiagnostics {
@@ -122,4 +129,7 @@ export class SilentAudioPort implements AudioPort {
     return { route: 'direct', contextState: 'none', sampleRate: 0, backgroundOutput: false, loopReady: false, loopUpToDate: true, loopPlaying: false, loopKind: null, streamAhead: 0, lastRenderMs: 0, lastRenderAt: 0, beat: null, tracks: [...this.tracks], recoveries: 0, events: [] };
   }
   noteRecovery() {}
+  takeAwayReport() {
+    return null;
+  }
 }

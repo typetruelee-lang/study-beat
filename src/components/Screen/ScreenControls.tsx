@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { openCurtain, setDimFor, setKeepAwakeFor, updateSettings } from '../../app/actions';
+import { openCurtain, setAutoDark, setDimFor, setKeepAwakeFor } from '../../app/actions';
 import { useAppState } from '../../app/store';
 import type { UseCase } from '../../sounds/types';
 import { ClayButton, IconButton } from '../common/ClayButton';
@@ -11,7 +11,7 @@ import './screen.css';
 
 const MODE_LABEL = { focus: '집중', sleep: '수면', relax: '휴식' } as const;
 
-/** ☀ button + sheet: app brightness, keep-awake / let the screen turn off, black screen. */
+/** ☀ button + sheet: app brightness, the dark screen and when it comes on. */
 export function ScreenControlsButton({ mode }: { mode: UseCase }) {
   const [open, setOpen] = useState(false);
   return (
@@ -24,40 +24,24 @@ export function ScreenControlsButton({ mode }: { mode: UseCase }) {
   );
 }
 
+/** "🌙 어둡게 두기" on the playback screens: the way to "turn the screen off" without stopping the sound. */
+export function DarkButton({ mode }: { mode: UseCase }) {
+  return (
+    <ClayButton variant="ghost" onClick={openCurtain}>
+      🌙 어둡게 두기 <span className="muted small">· 소리{mode === 'focus' ? '·기록' : ''} 계속</span>
+    </ClayButton>
+  );
+}
+
 export function ScreenControlsSheet({ mode, open, onClose }: { mode: UseCase; open: boolean; onClose: () => void }) {
   const dim = useAppState((s) => s.settings.dimByMode[mode]);
   const awake = useAppState((s) => s.settings.keepScreenOnByMode[mode]);
-  const auto = useAppState((s) => s.settings.autoCurtainMinutes);
+  const auto = useAppState((s) => s.settings.autoDarkMinutes);
 
   return (
     <Sheet open={open} onClose={onClose} label="화면 설정">
       <div className="stack">
         <p className="h2">화면 설정 · {MODE_LABEL[mode]}</p>
-
-        <div className="screen-sheet__row">
-          <Slider
-            label="화면 밝기"
-            min={0.15}
-            max={1}
-            value={1 - dim}
-            onChange={(v) => setDimFor(mode, 1 - v)}
-            format={(v) => `${Math.round(v * 100)}%`}
-          />
-          <p className="small muted">기기 밝기는 앱에서 바꿀 수 없어서, 앱 화면을 어둡게 해요.</p>
-        </div>
-
-        <ToggleRow
-          title="화면 켜짐 유지"
-          description={
-            awake
-              ? '재생하는 동안 화면이 꺼지지 않아요.'
-              : mode === 'focus'
-                ? '기기의 화면 자동 꺼짐 시간에 맞춰 꺼져요. 꺼지면 소리는 계속되고 집중 기록은 잠시 멈춰요.'
-                : '기기의 화면 자동 꺼짐 시간에 맞춰 꺼져요.'
-          }
-          checked={awake}
-          onChange={(v) => setKeepAwakeFor(mode, v)}
-        />
 
         <div className="screen-sheet__row">
           <ClayButton
@@ -69,28 +53,50 @@ export function ScreenControlsSheet({ mode, open, onClose }: { mode: UseCase; op
               openCurtain();
             }}
           >
-            검은 화면으로 두기
+            🌙 지금 어둡게 두기
           </ClayButton>
           <p className="small muted">
-            화면이 꺼진 것처럼 까맣게 두고 소리{mode === 'focus' ? '와 집중 기록' : ''}은 계속돼요. 두 번 탭하거나 길게 누르면 돌아와요.
+            화면을 끄는 대신 까맣게 두고 소리{mode === 'focus' ? '와 집중 기록' : ''}은 계속돼요. 화면을 만져도 그대로이고, 밀어야 돌아와요.
+            전원 버튼으로 화면을 끄면 소리가 멈출 수 있어요.
           </p>
         </div>
 
         <div className="screen-sheet__row">
-          <p className="strong">자동 검은 화면</p>
+          <p className="strong">자동으로 어둡게</p>
           <ChipGroup<number | null>
-            label="자동 검은 화면"
+            label="자동으로 어둡게"
             value={auto}
-            onChange={(v) => updateSettings({ autoCurtainMinutes: v })}
+            onChange={setAutoDark}
             options={[
-              { value: null, label: '끔' },
               { value: 1, label: '1분' },
               { value: 5, label: '5분' },
               { value: 10, label: '10분' },
+              { value: null, label: '끔' },
             ]}
           />
-          <p className="small muted">재생 중에 이 시간 동안 화면을 만지지 않으면 검은 화면으로 바뀌어요.</p>
+          <p className="small muted">재생 중에 이 시간 동안 화면을 만지지 않으면 어둡게 바뀌어요. 그때까지 화면은 켜져 있어요.</p>
         </div>
+
+        <div className="screen-sheet__row">
+          <Slider
+            label="화면 밝기"
+            min={0.05}
+            max={1}
+            value={1 - dim}
+            onChange={(v) => setDimFor(mode, 1 - v)}
+            format={(v) => `${Math.round(v * 100)}%`}
+          />
+          <p className="small muted">기기 밝기는 앱에서 바꿀 수 없어서, 앱 화면을 어둡게 해요.</p>
+        </div>
+
+        {auto == null && (
+          <ToggleRow
+            title="화면 켜짐 유지"
+            description={awake ? '재생하는 동안 화면이 꺼지지 않아요.' : '기기 설정 시간이 지나면 화면이 꺼져요. 화면이 꺼지면 소리가 멈출 수 있어요.'}
+            checked={awake}
+            onChange={(v) => setKeepAwakeFor(mode, v)}
+          />
+        )}
       </div>
     </Sheet>
   );

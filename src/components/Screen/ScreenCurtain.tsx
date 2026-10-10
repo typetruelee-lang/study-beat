@@ -4,68 +4,124 @@ import { describeSession } from '../../app/hooks';
 import { useAppState } from '../../app/store';
 import './screen.css';
 
-const LONG_PRESS_MS = 600;
+/** How long the clock and the slider stay up after a touch. */
+const SHOW_MS = 5000;
+/** Share of the track the knob must travel to come back. */
+const SLIDE_DONE = 0.85;
 
 /**
- * Black screen: looks like the screen is off, while the app stays in front so sound keeps
- * playing and a focus session keeps recording. Double-tap or long-press to come back.
+ * Dark screen ("어둡게 두기"): looks like the screen is off, while the app stays in front so sound
+ * keeps playing and a focus session keeps recording — a phone that really turns its screen off can
+ * stop the sound. Neither the web nor the Apps in Toss SDK can change the device brightness, so the
+ * screen is simply black (OLED pixels off). Touches only show the clock; coming back takes a
+ * deliberate slide, so a phone in a pocket or under a hand stays dark.
  */
 export function ScreenCurtain() {
   const open = useAppState((s) => s.curtain);
   const session = useAppState((s) => s.session);
   const playing = useAppState((s) => s.player.playing);
   const [now, setNow] = useState(() => new Date());
-  const [hint, setHint] = useState(true);
-  const press = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastTap = useRef(0);
+  const [poke, setPoke] = useState(0);
+  const [show, setShow] = useState(true);
 
   useEffect(() => {
     if (!open) return;
-    setHint(true);
-    const clock = setInterval(() => setNow(new Date()), 15_000);
-    const hideHint = setTimeout(() => setHint(false), 4000);
+    setPoke((p) => p + 1);
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeCurtain();
     window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  // Each touch shows the clock and slider again, then the screen goes fully black.
+  useEffect(() => {
+    if (!open || !poke) return;
+    setShow(true);
+    setNow(new Date());
+    const clock = setInterval(() => setNow(new Date()), 1000);
+    const hide = setTimeout(() => setShow(false), SHOW_MS);
     return () => {
       clearInterval(clock);
-      clearTimeout(hideHint);
-      window.removeEventListener('keydown', onKey);
+      clearTimeout(hide);
     };
-  }, [open]);
+  }, [open, poke]);
 
   if (!open) return null;
   const view = session ? describeSession(session) : null;
-  const status = view ? `${view.status} · ${view.bigTime}` : playing ? '재생 중' : '정지됨';
-  // Move the dim clock a little every minute (avoids burn-in on OLED screens).
-  const top = 30 + ((now.getMinutes() * 7) % 40);
+  const status = view ? `${view.status} · ${view.bigTime}` : playing ? '소리 재생 중' : '정지됨';
+  // Move the clock a little every minute (avoids burn-in on OLED screens).
+  const top = 24 + ((now.getMinutes() * 7) % 36);
+  const touch = () => setPoke((p) => p + 1);
 
   return (
-    <div
-      className="curtain"
-      role="dialog"
-      aria-label="검은 화면. 두 번 탭하거나 길게 누르면 돌아가요"
-      onPointerDown={() => {
-        setHint(true);
-        press.current = setTimeout(closeCurtain, LONG_PRESS_MS);
-        const t = Date.now();
-        if (t - lastTap.current < 350) closeCurtain();
-        lastTap.current = t;
-      }}
-      onPointerUp={() => press.current && clearTimeout(press.current)}
-      onPointerLeave={() => press.current && clearTimeout(press.current)}
-    >
-      <div className="curtain__info" style={{ top: `${top}%` }}>
+    <div className="curtain" role="dialog" aria-label="어둡게 두기. 밀어서 돌아가요" onPointerDown={touch}>
+      <div className="curtain__info" style={{ top: `${top}%`, opacity: show ? 1 : 0 }} aria-hidden={!show}>
         <span className="curtain__clock">{now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
         <span className="curtain__status">{status}</span>
-        <span className="curtain__hint" style={{ opacity: hint ? 1 : 0 }}>두 번 탭하거나 길게 누르면 돌아가요</span>
       </div>
+      <div className="curtain__bottom" style={{ opacity: show ? 1 : 0, pointerEvents: show ? 'auto' : 'none' }}>
+        <SlideToReturn onMove={touch} onDone={closeCurtain} />
+        <span className="curtain__hint">화면을 만져도 그대로예요</span>
+      </div>
+      <button type="button" className="sr-only" onClick={closeCurtain}>돌아가기</button>
     </div>
   );
 }
 
-/** Enter the black screen after N idle minutes while something is playing. */
-export function useAutoCurtain() {
-  const minutes = useAppState((s) => s.settings.autoCurtainMinutes);
+function SlideToReturn({ onMove, onDone }: { onMove: () => void; onDone: () => void }) {
+  const track = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ from: number; max: number } | null>(null);
+  const [x, setX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const xRef = useRef(0);
+  const move = (v: number) => {
+    xRef.current = v;
+    setX(v);
+  };
+  const release = () => {
+    const d = drag.current;
+    drag.current = null;
+    setDragging(false);
+    if (d && xRef.current >= d.max * SLIDE_DONE) onDone();
+    else move(0);
+  };
+
+  return (
+    <div className="slide" ref={track}>
+      <span className="slide__label" style={{ opacity: 1 - x / 160 }}>밀어서 돌아가기</span>
+      <span
+        className="slide__knob"
+        aria-hidden="true"
+        style={{ transform: `translateX(${x}px)`, transition: dragging ? 'none' : undefined }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          e.currentTarget.setPointerCapture?.(e.pointerId);
+          const max = (track.current?.clientWidth ?? 0) - e.currentTarget.offsetWidth - 8;
+          drag.current = { from: e.clientX - xRef.current, max };
+          setDragging(true);
+          onMove();
+        }}
+        onPointerMove={(e) => {
+          const d = drag.current;
+          if (!d) return;
+          move(Math.max(0, Math.min(d.max, e.clientX - d.from)));
+          onMove();
+        }}
+        onPointerUp={release}
+        onPointerCancel={() => {
+          drag.current = null;
+          setDragging(false);
+          move(0);
+        }}
+      >
+        ›
+      </span>
+    </div>
+  );
+}
+
+/** Go dark after N idle minutes while something is playing (the display is kept on until then). */
+export function useAutoDark() {
+  const minutes = useAppState((s) => s.settings.autoDarkMinutes);
   const active = useAppState((s) => s.player.playing || s.session?.status === 'running');
   const open = useAppState((s) => s.curtain);
   useEffect(() => {

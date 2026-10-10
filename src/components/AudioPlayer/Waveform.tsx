@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { services } from '../../app/services';
+import { useAppState } from '../../app/store';
 import './player.css';
 
 /**
@@ -9,7 +10,9 @@ import './player.css';
  */
 export function Waveform({ playing }: { playing: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const analyser = playing ? services.audio.getAnalyser() : null;
+  // Nothing to draw under the dark screen: stop the frame loop.
+  const dark = useAppState((s) => s.curtain);
+  const analyser = playing && !dark ? services.audio.getAnalyser() : null;
 
   useEffect(() => {
     const c = canvas.current;
