@@ -4,6 +4,7 @@ interface ImportMetaEnv {
   readonly VITE_SKIN?: 'clay' | 'aura';
   readonly VITE_ROUTER?: 'memory' | 'hash';
   readonly VITE_TDS?: 'on' | 'off';
+  readonly VITE_TOSS_AD_BANNER_ID?: string;
   readonly VITE_ADSENSE_CLIENT?: string;
   readonly VITE_ADSENSE_SLOT_HOME?: string;
   readonly VITE_ADSENSE_SLOT_STATS?: string;

@@ -9,6 +9,7 @@ import { AitStorageKV } from './storage/AitStorageKV';
 import { isInToss } from './platform/toss';
 import { setupTossNavigation } from './platform/tossNavigation';
 import { applyDeepLink } from './platform/deeplink';
+import { initBannerAds } from './platform/tossAds';
 import './design/global.css';
 import { SKIN } from './app/skin';
 
@@ -33,6 +34,9 @@ safely(() =>
     () => history.back(),
   ),
 );
+
+// Toss banner ads: initialise the SDK once, early, so the first slot fills quickly.
+safely(() => void initBannerAds());
 
 if (import.meta.env.DEV) {
   // Read-only hook for scripts/e2e.mjs

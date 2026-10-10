@@ -6,9 +6,15 @@ import { join } from 'node:path';
 const APP_ID = 'molip-gak';
 const APP_NAME = '몰입각';
 let failed = 0;
+let warned = 0;
 const check = (ok, label, fix) => {
   if (!ok) failed++;
   console.log(`${ok ? '✅' : '❌'} ${label}${ok ? '' : `\n   → ${fix}`}`);
+};
+/** Fine for testing, must change before review. */
+const warn = (ok, label, todo) => {
+  if (!ok) warned++;
+  console.log(`${ok ? '✅' : '⚠️ '} ${label}${ok ? '' : `\n   → ${todo}`}`);
 };
 const read = (p) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
 const walk = (dir, re) =>
@@ -38,6 +44,17 @@ const js = walk('dist/assets', /\.js$/).map((p) => read(p)).join('\n');
 check(js.length > 0 && !/\beval\(|new Function\(/.test(js), '외부 코드 실행(eval·new Function) 없음', '번들에 eval 이 들어갔어요. Claude에게 알려주세요.');
 check(!/googlesyndication|adsbygoogle/.test(js), '구글 광고 코드가 토스판에 없음', '웹용 빌드가 섞였어요. npm run build 로 다시 빌드하세요.');
 check(/adaptiveGrey|tds-mobile|TDSMobile/.test(js), 'TDS(토스 디자인 시스템) 포함', '@toss/tds-mobile 이 빠졌어요. npm install 후 다시 빌드하세요.');
+
+// 2b. 토스 배너 광고
+const env = read('.env');
+const adId = env.match(/^VITE_TOSS_AD_BANNER_ID=(.*)$/m)?.[1]?.trim() ?? '';
+check(adId !== '', '배너 광고 ID가 .env에 있음 (VITE_TOSS_AD_BANNER_ID)', '.env에 VITE_TOSS_AD_BANNER_ID=ait-ad-test-banner-id 를 넣으세요.');
+check(adId !== '' && js.includes(adId) && /attachBanner/.test(js), '배너 광고가 빌드에 들어감', 'npm run build 를 다시 실행하세요.');
+warn(
+  adId !== 'ait-ad-test-banner-id',
+  adId === 'ait-ad-test-banner-id' ? '배너 광고: 테스트 ID 사용 중 (QR 테스트용으로는 정상)' : `배너 광고: 실제 광고 그룹 ID (${adId})`,
+  '검수 요청 전에 콘솔 → 인앱 광고에서 받은 배너 광고 그룹 ID로 바꾸세요(.env의 VITE_TOSS_AD_BANNER_ID). 실제 ID로 테스트하면 안 돼요.',
+);
 
 // 3. 번들 파일
 const ait = `${APP_ID}.ait`;
@@ -80,5 +97,11 @@ for (const [name, [w, h]] of Object.entries(SIZES)) {
   check(b && b.readUInt32BE(16) === w && b.readUInt32BE(20) === h, `이미지 ${name} (${w}×${h})`, 'node scripts/store-assets.mjs 로 다시 만드세요.');
 }
 
-console.log(failed ? `\n❌ ${failed}개 항목을 고친 뒤 다시 실행하세요.` : '\n✅ 모두 통과! 다음 단계(샌드박스 업로드)로 넘어가세요.');
+console.log(
+  failed
+    ? `\n❌ ${failed}개 항목을 고친 뒤 다시 실행하세요.`
+    : warned
+      ? `\n✅ 업로드·QR 테스트 가능! ⚠️ ${warned}개는 검수 요청 전에 바꾸세요.`
+      : '\n✅ 모두 통과! 업로드하고 검수 요청까지 할 수 있어요.',
+);
 process.exit(failed ? 1 : 0);

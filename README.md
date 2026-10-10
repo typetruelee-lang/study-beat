@@ -42,7 +42,7 @@ node scripts/build-preview.mjs [out.html] [web]  # 브라우저 미리보기용 
 |---|---|---|
 | 스킨 | `clay` — 밝은 웜톤, 얇은 테두리+부드러운 그림자, 정돈된 여백 | `aura` — 어두운 배경, 그라데이션 오브·빛 번짐, 그라데이션 버튼 |
 | 장면 | 클레이 일러스트 | 모드별 색의 오브 애니메이션(`AuraArt`) |
-| 광고 | 없음 | Google AdSense (홈·통계·라이브러리·결과 화면, **재생 화면에는 없음**) |
+| 광고 | 토스 배너 광고 (홈·기록 화면 맨 아래, **재생 화면에는 없음**) | Google AdSense (홈·통계·라이브러리·결과 화면, **재생 화면에는 없음**) |
 | 설정 파일 | `.env` | `.env` + `.env.web` (제목·설명·테마색도 여기서) |
 
 Anima: Binaural Beats와의 기능 비교와 차용 결정은 [docs/anima-comparison.md](docs/anima-comparison.md).
@@ -182,6 +182,23 @@ npm run deploy    # ait deploy — 콘솔 API 키 필요 (ait token add 로 등�
 - **설정 → 소리 진단**: 출력 경로, 배경 음원 상태, 최근 이벤트(화면 꺼짐/켜짐, 경로 전환, 요소 pause·stalled, 자동 복구). 기기 테스트 후 캡처용.
 - 점검: `npm run test:audio`(모든 모드 기본 믹스 + 추천 11개의 루프 파일: 귀별 스테레오, 비트 세기 ±1dB, 이음매, WAV 디코딩 / 시작 20초 비트 세기),
   `npm run test:e2e`(25분 집중을 화면 꺼짐 15분 포함해 끝까지, 정지 직후 재시작, 감시 복구), `npm run test:soak`(실시간·CPU 4배 감속에서 오디오 지연·긴 작업).
+
+### 토스 배너 광고 (인앱 광고 · WebView 배너)
+
+개발자센터 문서가 이 환경에서 막혀 있어, 공식 예제 [toss/apps-in-toss-examples `in-app-ads`](https://github.com/toss/apps-in-toss-examples/tree/main/in-app-ads)와
+SDK 3.6.0 타입 정의(`TossAds`)를 기준으로 구현했다.
+
+- `src/platform/tossAds.ts`: 토스 앱이 넣어 주는 광고 SDK(`window.__appsInToss.ads`)가 있을 때만 SDK를 불러와 `TossAds.initialize`를 **앱 전체에서 한 번**,
+  슬롯마다 빈 요소에 `TossAds.attachBanner(광고그룹ID, el, { theme: 'light', tone: 'blackAndWhite', variant: 'card' })`. 화면을 떠나면 `destroy()`.
+- `src/components/Ads/AdSlot.tsx`: 토스판은 **홈·기록 화면 맨 아래**만(사운드 탭·결과 화면은 버튼 바로 아래라 제외). 너비 100%, 최소 높이 96px,
+  버튼과 20px 이상 떨어짐(E2E 측정). 광고가 없거나(`onNoFill`) 그리지 못하면 자리를 접는다. "Ad" 표기·새로고침·노출/클릭 기록은 SDK에 맡긴다(직접 만들지 않음).
+- 광고 그룹 ID: `.env`의 `VITE_TOSS_AD_BANNER_ID`. 지금은 테스트 ID `ait-ad-test-banner-id`(배너 리스트형). 콘솔 → 인앱 광고에서 받은 실제 ID로
+  바꾼 뒤 검수 요청한다. 실제 ID로 테스트하면 정책 위반. `npm run check:toss`가 테스트 ID면 ⚠️로 알려 준다. 웹판(`.env.web`)은 비워 둔다.
+- 샌드박스 앱에서는 광고가 지원되지 않는다 → 콘솔 QR(토스 앱)로 확인. 설정 → 소리 진단의 "광고 배너" 줄에서 상태 확인.
+- 정책(예제 README): 광고를 콘텐츠처럼 위장 금지, 결제·인증 같은 핵심 흐름 화면 금지, CTA·닫기 버튼·입력칸 옆 금지, 한 화면에 같은 포맷 2개 금지,
+  클릭 보상 금지, SDK 이벤트 우회 금지, 타이머 새로고침 금지.
+- 점검: `src/components/Ads/AdSlot.test.tsx`(초기화 1회, 테스트 ID·옵션, 광고 없음→접힘, 떠나면 제거, 사운드 탭·결과 화면 제외),
+  `npm run test:e2e`(가짜 광고 SDK로 홈·기록에만 배너, 수면·집중 중·사운드 탭엔 없음, 버튼과의 간격).
 
 ### 출시 절차
 

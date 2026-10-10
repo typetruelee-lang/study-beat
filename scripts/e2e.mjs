@@ -446,6 +446,60 @@ check('page title is the app name', (await page.title()) === '몰입각', await 
   await rn.close();
 }
 
+// ── Toss banner ads: only with the ad SDK the Toss app injects, only on home and stats, never on playback screens
+check('no ad slot outside the Toss app', (await page.locator('.toss-ad').count()) === 0);
+{
+  const tp = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  tp.on('pageerror', (e) => errors.push(String(e)));
+  await tp.addInitScript(() => {
+    const calls = (window.__adCalls = []);
+    window.__appsInToss = {
+      ads: {
+        initialize: Object.assign((o) => { calls.push('initialize'); setTimeout(() => o.callbacks?.onInitialized?.(), 50); }, { isSupported: () => true }),
+        attachBanner: (id, el, o) => {
+          calls.push(`attach ${id} ${o.theme} ${o.variant}`);
+          const ad = Object.assign(document.createElement('div'), { className: 'fake-ad', textContent: 'Ad' });
+          ad.style.height = '96px';
+          el.appendChild(ad);
+          setTimeout(() => o.callbacks?.onAdRendered?.({ slotId: 's', adGroupId: id, adMetadata: { creativeId: 'c', requestId: 'r' } }), 50);
+          return { destroy: () => { calls.push('destroy'); ad.remove(); } };
+        },
+        destroy() {},
+        destroyAll() {},
+      },
+    };
+  });
+  const slots = async (route) => {
+    await tp.goto(`http://localhost:4182/#${route}`);
+    await tp.waitForTimeout(800);
+    return tp.locator('.toss-ad--shown .fake-ad').count();
+  };
+  const home = await slots('/');
+  // Nearest button above the slot: the ad must not sit right against it (accidental taps).
+  const gap = await tp.evaluate(() => {
+    const ad = document.querySelector('.toss-ad').getBoundingClientRect();
+    return Math.min(...[...document.querySelectorAll('button')].map((b) => b.getBoundingClientRect()).filter((b) => b.bottom <= ad.top + 1 && b.height > 0).map((b) => ad.top - b.bottom));
+  });
+  const stats = await slots('/stats');
+  const library = await slots('/library');
+  const sleep = await slots('/sleep');
+  await tp.goto('http://localhost:4182/#/focus/ready');
+  await tp.getByRole('button', { name: '집중 시작', exact: true }).click();
+  await tp.waitForTimeout(1500);
+  const focus = await tp.locator('.toss-ad').count();
+  await tp.goto('http://localhost:4182/#/settings/audio');
+  await tp.waitForTimeout(800);
+  const diag = await tp.getByText(/테스트 ID · /).count();
+  const calls = await tp.evaluate(() => window.__adCalls);
+  check(
+    'Toss banner: test ID on home and stats (one SDK init), none on library, sleep or a running focus session',
+    home === 1 && stats === 1 && library === 0 && sleep === 0 && focus === 0 && calls.filter((c) => c === 'initialize').length === 1 && calls.includes('attach ait-ad-test-banner-id light card') && diag === 1,
+    { home, stats, library, sleep, focus, diag, calls },
+  );
+  check(`Toss banner keeps ${Math.round(gap)}px from the nearest button above it`, gap >= 20, { gap });
+  await tp.close();
+}
+
 check('no page errors', errors.length === 0, errors);
 await browser.close();
 await server.close();

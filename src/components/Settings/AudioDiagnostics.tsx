@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { services } from '../../app/services';
 import { isInToss } from '../../platform/toss';
+import { BANNER_ID, TEST_BANNER_ID, bannerAdsAvailable, bannerState } from '../../platform/tossAds';
 import { ScreenHeader } from '../common/ScreenHeader';
 
 const ROUTE = { direct: '직접 출력 (앱 화면이 보일 때)', background: '배경 음원 (화면 꺼짐·다른 앱)' } as const;
+const AD_STATE = { off: '대기', loading: '불러오는 중', shown: '표시됨', empty: '보여 줄 광고 없음', error: '표시 못 함' } as const;
 const time = (ms: number) => (ms ? new Date(ms).toLocaleTimeString('ko-KR', { hour12: false }) : '—');
 
 /**
@@ -25,6 +27,7 @@ export function AudioDiagnostics() {
     ['비트', d.beat ? `${d.beat.hz} Hz · ${d.beat.carrier} Hz 기준 · ${d.beat.kind === 'binaural' ? '이어폰용' : '스피커용'}` : '꺼짐'],
     ['배경음', d.tracks.join(', ') || '없음'],
     ['자동 복구', `${d.recoveries}회`],
+    ['광고 배너', bannerAdsAvailable() ? `${BANNER_ID === TEST_BANNER_ID ? '테스트 ID' : '실제 ID'} · ${AD_STATE[bannerState()]}` : '없음 (토스 앱에서만)'],
   ];
   return (
     <div className="screen screen--bare stack">

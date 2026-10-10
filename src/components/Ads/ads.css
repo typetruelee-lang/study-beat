@@ -2,3 +2,8 @@
 .ad-slot { margin: 12px 0 4px; padding: 10px 0 0; border-top: 1px solid var(--line); min-height: 100px; }
 .ad-slot__label { display: block; font-size: 11px; letter-spacing: 0.06em; color: var(--ink-faint); margin-bottom: 6px; }
 .ad-slot--placeholder { display: grid; place-items: center; min-height: 110px; border: 1px dashed var(--line); border-radius: var(--radius-m); color: var(--ink-faint); font-size: 13px; }
+
+/* Toss banner: an empty full-width slot the SDK draws into, away from buttons (Toss ad policy).
+   96px is the recommended fixed banner height; the space folds away when there is no ad. */
+.toss-ad { width: 100%; min-height: 96px; margin-top: 24px; }
+.toss-ad[hidden] { display: none; }
