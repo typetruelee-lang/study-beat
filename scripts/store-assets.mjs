@@ -47,6 +47,8 @@ const iconUri = `data:image/svg+xml;base64,${Buffer.from(iconSvg).toString('base
 const shots = {};
 {
   const p = await browser.newPage({ viewport: { width: 318, height: 524 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  // Mid-afternoon, so today's sample session (3 h ago) lands on today whatever time this runs.
+  await p.clock.setSystemTime(new Date(new Date().setHours(15, 0, 0, 0)));
   await p.goto(URL);
   await p.evaluate(() => {
     // A sample week so the home ring and the stats screen have something to show.
@@ -105,7 +107,7 @@ const promo = (w, h, phones) => {
   <div class="copy">
     <img class="icon" src="${iconUri}">
     <h1>몰입각</h1>
-    <p>공부할 때 틀어두는 집중 사운드<br>빗소리·계곡물 + 타이머 + 기록</p>
+    <p>공부할 때 틀어두는 집중 사운드<br>빗소리·파도 + 타이머 + 기록</p>
   </div>
   <div class="phones">${phones.map((n) => `<img class="phone" src="${shots[n]}">`).join('')}</div>
 </body></html>`;

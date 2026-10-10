@@ -9,7 +9,7 @@ export type SynthId =
   | 'waves' | 'slowWaves'
   | 'wind' | 'mountainWind'
   | 'forest' | 'birds' | 'nightForest'
-  | 'stream' | 'fire'
+  | 'fire'
   | 'train' | 'cityNight'
   | 'deepRumble'
   | 'calmPad' | 'lullaby';

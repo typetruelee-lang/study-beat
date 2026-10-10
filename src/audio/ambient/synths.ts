@@ -87,20 +87,6 @@ const rainHeavy = (ctx: BaseAudioContext, key: string, perSecond: number) =>
     }
   });
 
-/** Water dripping from the eaves into a puddle: sparse soft "plip"s (pitch rising a little, like a drop into water), sometimes two close together. */
-const eaveDrips = (ctx: BaseAudioContext) =>
-  eventBuffer(ctx, 'eaves', 13.7, (L, R, sr, rnd) => {
-    let t = 0.3;
-    while (t < 13.4) {
-      const n = rnd() < 0.25 ? 2 : 1;
-      for (let k = 0; k < n; k++) {
-        const ev = ping(sr, rnd, 650 + rnd() * 650, 0.018 + rnd() * 0.018, 0.22 + 0.28 * rnd(), 0.12, 1.35 + rnd() * 0.25);
-        addEvent(L, R, Math.floor((t + k * (0.12 + rnd() * 0.1)) * sr), ev, rnd() * 1.2 - 0.6);
-      }
-      t += 1 + rnd() * 2;
-    }
-  });
-
 const crackles = (ctx: BaseAudioContext) =>
   eventBuffer(ctx, 'crackle', 12, (L, R, sr, rnd) => {
     let t = 0.05;
@@ -211,6 +197,8 @@ interface RainOpts {
   hiss: number;
   body: number;
   patter: number;
+  /** Level of the fine patter layer (default 1). */
+  patterGain?: number;
   heavy: number;
 }
 
@@ -236,7 +224,7 @@ function rainLayers(ctx: BaseAudioContext, dest: AudioNode, s: Sources, o: RainO
   wander(ctx, hiss.gain, `rain-hiss-${o.key}`, o.hiss * 0.25, 0.15, s);
   noiseBed(ctx, 'brown', chain(filt(ctx, 'lowpass', 220), out), o.body, s);
   // Each bed plays its buffer twice, so buffers hold half the target density.
-  eventBed(ctx, rainPatter(ctx, o.key, o.patter / 2), chain(filt(ctx, 'highpass', 1400), filt(ctx, 'lowpass', Math.min(16000, o.lp * 1.6)), out), 1, s);
+  eventBed(ctx, rainPatter(ctx, o.key, o.patter / 2), chain(filt(ctx, 'highpass', 1400), filt(ctx, 'lowpass', Math.min(16000, o.lp * 1.6)), out), o.patterGain ?? 1, s);
   const heavy = eventBed(ctx, rainHeavy(ctx, o.key, o.heavy / 2), chain(filt(ctx, 'highpass', 250), filt(ctx, 'lowpass', o.lp), out), 0.9, s);
   wander(ctx, heavy.gain, `rain-heavy-${o.key}`, 0.35, 0.07, s);
 }
@@ -246,11 +234,10 @@ const RECIPES: Record<SynthId, Recipe> = {
   pink: plainNoise('pink'),
   brown: plainNoise('brown'),
 
-  // 처마 밑 빗소리: gentle rain with water dripping now and then from the eaves into a puddle.
+  // 보슬비: fine, light drizzle — a soft airy hiss and many tiny quiet drops, almost no heavy ones.
   rain: (ctx, out) => {
     const s: Sources = [];
-    rainLayers(ctx, out, s, { key: 'eaves', lp: 5000, hiss: 0.42, body: 0.14, patter: 45, heavy: 5 });
-    eventBed(ctx, eaveDrips(ctx), chain(filt(ctx, 'lowpass', 2600), out), 0.6, s);
+    rainLayers(ctx, out, s, { key: 'drizzle', lp: 4500, hiss: 0.4, body: 0.1, patter: 110, patterGain: 0.45, heavy: 1 });
     return s;
   },
   softRain: (ctx, out) => {
@@ -318,19 +305,6 @@ const RECIPES: Record<SynthId, Recipe> = {
     return s;
   },
 
-  // 계곡물: water running softly over stones — a band of noise whose colour and level move quickly
-  // and irregularly, a gentle airy top and a low body. No pitched bubbles.
-  stream: (ctx, out) => {
-    const s: Sources = [];
-    const bp = filt(ctx, 'bandpass', 800, 0.7);
-    const flow = noiseBed(ctx, 'pink', chain(bp, out), 0.55, s);
-    wander(ctx, bp.frequency, 'brook-colour', 350, 2.2, s);
-    wander(ctx, flow.gain, 'brook-level', 0.18, 1.6, s);
-    const air = noiseBed(ctx, 'white', chain(filt(ctx, 'bandpass', 2600, 0.9), filt(ctx, 'lowpass', 5000), out), 0.06, s);
-    wander(ctx, air.gain, 'brook-air', 0.025, 3, s);
-    noiseBed(ctx, 'brown', chain(filt(ctx, 'lowpass', 300), out), 0.3, s);
-    return s;
-  },
   fire: (ctx, out) => {
     const s: Sources = [];
     const g = loop(ctx, noiseBuffer(ctx, 'brown'), chain(filt(ctx, 'lowpass', 450), out), 0.7, s);
@@ -384,11 +358,11 @@ const RECIPES: Record<SynthId, Recipe> = {
  */
 const RAW_DB: Record<SynthId, number> = {
   white: -14.0, pink: -14.0, brown: -14.0,
-  rain: -22.4, softRain: -21.2,
+  rain: -22.2, softRain: -21.2,
   waves: -18.2, slowWaves: -18.3,
   wind: -22.0, mountainWind: -23.7,
   forest: -30.2, birds: -30.6, nightForest: -28.1,
-  stream: -22.8, fire: -17.7,
+  fire: -17.7,
   train: -17.1, cityNight: -17.6,
   deepRumble: -12.9,
   calmPad: -22.6, lullaby: -23.7,

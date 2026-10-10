@@ -63,7 +63,7 @@ await page.getByRole('button', { name: '■ 정지' }).click();
 await page.waitForTimeout(2000);
 check('engine demo: stop fades to silence', !(await page.evaluate(() => window.focusClayDemo.playing)) && (await level()) < 0.001);
 const api = await page.evaluate(() => ({ sounds: FocusClay.sounds.length, presets: FocusClay.presets.map((p) => p.hz).join(','), v: FocusClay.version }));
-check(`engine API exposes ${api.sounds} sounds and presets ${api.presets}`, api.sounds === 19 && api.presets === '2,4,6,8,10,12,14,18,40', api);
+check(`engine API exposes ${api.sounds} sounds and presets ${api.presets}`, api.sounds === 18 && api.presets === '2,4,6,8,10,12,14,18,40', api);
 
 check('no page errors', errors.length === 0, errors);
 await browser.close();

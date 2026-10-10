@@ -1,7 +1,7 @@
 [
   {
     "id": "rain_01",
-    "name": "처마 밑 빗소리",
+    "name": "보슬비",
     "emoji": "🌧",
     "category": "nature",
     "bus": "ambient",
@@ -99,27 +99,6 @@
     "source": "synth",
     "synth": "birds",
     "thumb": "birds",
-    "license": {
-      "name": "Original (procedural)",
-      "commercialUse": true,
-      "attributionRequired": false
-    }
-  },
-  {
-    "id": "stream_01",
-    "name": "계곡물",
-    "emoji": "🏞",
-    "category": "nature",
-    "bus": "ambient",
-    "useCases": [
-      "focus",
-      "relax"
-    ],
-    "loop": true,
-    "volume": 0.55,
-    "source": "synth",
-    "synth": "stream",
-    "thumb": "stream",
     "license": {
       "name": "Original (procedural)",
       "commercialUse": true,

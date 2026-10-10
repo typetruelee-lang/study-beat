@@ -29,9 +29,9 @@ export function soundsFor(useCase: UseCase): SoundMeta[] {
 
 /** Short picks shown directly on each mode screen (most useful first). */
 export const QUICK_PICKS: Record<UseCase, string[]> = {
-  focus: ['rain_01', 'stream_01', 'fire_01', 'waves_01', 'forest_01', 'noise_pink'],
+  focus: ['rain_01', 'fire_01', 'waves_01', 'forest_01', 'noise_pink', 'noise_brown'],
   sleep: ['soft_rain_01', 'sleep_waves_01', 'night_forest_01', 'wind_01', 'noise_brown', 'noise_pink', 'lullaby_01'],
-  relax: ['forest_01', 'mountain_wind_01', 'stream_01', 'birds_01', 'calm_pad_01'],
+  relax: ['forest_01', 'mountain_wind_01', 'waves_01', 'birds_01', 'calm_pad_01'],
 };
 
 /** Default mix per mode (first run). */
